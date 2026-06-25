@@ -1,0 +1,290 @@
+import { useRef, useState, type MouseEvent, type PointerEvent } from 'react'
+import type { CakeDefinition, CakePieceModel, InteractionMode, Topping } from '../types/game'
+import { normalizeAngle, polarToCartesian } from '../utils/cakeGeometry'
+import { CakePiece } from './CakePiece'
+import { CakePieceLabels } from './CakePieceLabels'
+import { CuttingGuide } from './CuttingGuide'
+import { ToppingLayer } from './ToppingLayer'
+
+interface CakeBoardProps {
+  pieces: CakePieceModel[]
+  cake: CakeDefinition
+  toppings: Topping[]
+  cutToppingIds: string[]
+  isTrayFull: boolean
+  interactionMode: InteractionMode
+  currentCuts: number
+  activeCuts: number | null
+  onCutCake: (cuts: number, cutAngles: number[]) => void
+  onMovePieceToTray: (piece: CakePieceModel) => void
+}
+
+interface BoardPoint {
+  x: number
+  y: number
+}
+
+const center = 120
+const minimumSwipeLength = 42
+const angleTolerance = 24
+const centerTolerance = 76
+const edgeDistance = 44
+
+const getLineAngleDistance = (left: number, right: number): number => {
+  const difference = Math.abs(normalizeAngle(left) - normalizeAngle(right)) % 180
+  return Math.min(difference, 180 - difference)
+}
+
+const getAngleDistance = (left: number, right: number): number => {
+  const difference = Math.abs(normalizeAngle(left) - normalizeAngle(right))
+  return Math.min(difference, 360 - difference)
+}
+
+const getSvgPoint = (event: PointerEvent<SVGSVGElement>): BoardPoint => {
+  const bounds = event.currentTarget.getBoundingClientRect()
+
+  return {
+    x: ((event.clientX - bounds.left) / bounds.width) * 240,
+    y: ((event.clientY - bounds.top) / bounds.height) * 240,
+  }
+}
+
+const getSwipeLength = (start: BoardPoint, end: BoardPoint): number =>
+  Math.hypot(end.x - start.x, end.y - start.y)
+
+const getSwipeAngle = (start: BoardPoint, end: BoardPoint): number =>
+  normalizeAngle((Math.atan2(end.x - start.x, -(end.y - start.y)) * 180) / Math.PI)
+
+const getMidpointDistanceFromCenter = (start: BoardPoint, end: BoardPoint): number => {
+  const midpoint = {
+    x: (start.x + end.x) / 2,
+    y: (start.y + end.y) / 2,
+  }
+
+  return Math.hypot(midpoint.x - center, midpoint.y - center)
+}
+
+const getDistanceFromCenter = (point: BoardPoint): number => Math.hypot(point.x - center, point.y - center)
+
+const getAngleFromCenter = (point: BoardPoint): number =>
+  normalizeAngle((Math.atan2(point.x - center, -(point.y - center)) * 180) / Math.PI)
+
+const getGuideAngles = (cuts: number): number[] =>
+  Array.from({ length: cuts }, (_, index) => (360 / cuts) * index)
+
+const getNearestGuideAngle = (cuts: number, angle: number): number => {
+  const guideAngles = getGuideAngles(cuts)
+
+  return guideAngles.reduce((nearestAngle, guideAngle) =>
+    getLineAngleDistance(angle, guideAngle) < getLineAngleDistance(angle, nearestAngle)
+      ? guideAngle
+      : nearestAngle,
+  )
+}
+
+const getNearestRadialGuideAngle = (cuts: number, angle: number): number => {
+  const guideAngles = getGuideAngles(cuts)
+
+  return guideAngles.reduce((nearestAngle, guideAngle) =>
+    getAngleDistance(angle, guideAngle) < getAngleDistance(angle, nearestAngle)
+      ? guideAngle
+      : nearestAngle,
+  )
+}
+
+const isSwipeOnGuide = (cuts: number, start: BoardPoint, end: BoardPoint): boolean => {
+  if (getSwipeLength(start, end) < minimumSwipeLength) {
+    return false
+  }
+
+  if (getMidpointDistanceFromCenter(start, end) > centerTolerance) {
+    return false
+  }
+
+  const swipeAngle = getSwipeAngle(start, end)
+  const guideAngles = getGuideAngles(cuts)
+
+  return guideAngles.some((guideAngle) => getLineAngleDistance(swipeAngle, guideAngle) <= angleTolerance)
+}
+
+const getCutAnglesFromSwipe = (cuts: number, start: BoardPoint, end: BoardPoint): number[] => {
+  const startDistance = getDistanceFromCenter(start)
+  const endDistance = getDistanceFromCenter(end)
+  const midpointDistance = getMidpointDistanceFromCenter(start, end)
+  const swipeAngle = getSwipeAngle(start, end)
+  const isDiameterCut =
+    startDistance > edgeDistance && endDistance > edgeDistance && midpointDistance <= centerTolerance
+
+  if (isDiameterCut) {
+    const guideAngle = getNearestGuideAngle(cuts, swipeAngle)
+    return [guideAngle, guideAngle + 180]
+  }
+
+  const farPoint = startDistance >= endDistance ? start : end
+  const radialAngle = getAngleFromCenter(farPoint)
+  return [getNearestRadialGuideAngle(cuts, radialAngle)]
+}
+
+const pendingCutLineRadius = 104
+
+const getPendingCutAngles = (pieces: CakePieceModel[]): number[] =>
+  Array.from(new Set(pieces.flatMap((piece) => piece.pendingCutAngles)))
+
+export function CakeBoard({
+  pieces,
+  cake,
+  toppings,
+  cutToppingIds,
+  isTrayFull,
+  interactionMode,
+  currentCuts,
+  activeCuts,
+  onCutCake,
+  onMovePieceToTray,
+}: CakeBoardProps) {
+  const [swipeStart, setSwipeStart] = useState<BoardPoint | null>(null)
+  const [swipeEnd, setSwipeEnd] = useState<BoardPoint | null>(null)
+  const [cutNotice, setCutNotice] = useState('点線に沿ってケーキをスワイプすると切れます。')
+  const shouldSuppressNextClick = useRef(false)
+  const pendingCutAngles = getPendingCutAngles(pieces)
+
+  const handlePointerDown = (event: PointerEvent<SVGSVGElement>): void => {
+    if (interactionMode !== 'cut') {
+      return
+    }
+
+    const point = getSvgPoint(event)
+    event.currentTarget.setPointerCapture(event.pointerId)
+    setSwipeStart(point)
+    setSwipeEnd(point)
+  }
+
+  const handlePointerMove = (event: PointerEvent<SVGSVGElement>): void => {
+    if (interactionMode !== 'cut') {
+      return
+    }
+
+    if (swipeStart === null) {
+      return
+    }
+
+    setSwipeEnd(getSvgPoint(event))
+  }
+
+  const handlePointerUp = (event: PointerEvent<SVGSVGElement>): void => {
+    if (interactionMode !== 'cut') {
+      setSwipeStart(null)
+      setSwipeEnd(null)
+      return
+    }
+
+    if (swipeStart === null) {
+      return
+    }
+
+    const end = getSvgPoint(event)
+    const swipeLength = getSwipeLength(swipeStart, end)
+
+    setSwipeStart(null)
+    setSwipeEnd(null)
+
+    if (swipeLength < minimumSwipeLength) {
+      return
+    }
+
+    shouldSuppressNextClick.current = true
+    window.setTimeout(() => {
+      shouldSuppressNextClick.current = false
+    }, 0)
+
+    if (isSwipeOnGuide(currentCuts, swipeStart, end)) {
+      onCutCake(currentCuts, getCutAnglesFromSwipe(currentCuts, swipeStart, end))
+      setCutNotice(`${currentCuts}等分の線でスパッと切れました。ピースをトレイへ運ぼう。`)
+      return
+    }
+
+    setCutNotice('もう少し点線に沿って、ケーキのまんなかを通るようにスワイプしてみよう。')
+  }
+
+  const handleClickCapture = (event: MouseEvent<SVGSVGElement>): void => {
+    if (!shouldSuppressNextClick.current) {
+      return
+    }
+
+    shouldSuppressNextClick.current = false
+    event.preventDefault()
+    event.stopPropagation()
+  }
+
+  return (
+    <section className="cake-board" aria-label="ケーキを切る場所">
+      <div className="cake-board__surface">
+        <svg
+          viewBox="0 0 240 240"
+          className="cake-svg"
+          role="img"
+          aria-label="丸いケーキ"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onClickCapture={handleClickCapture}
+        >
+          <circle cx="120" cy="120" r="112" className="cake-crust" style={{ fill: cake.crustColor }} />
+          {pieces.length === 0 ? <circle cx="120" cy="120" r="104" className="cake-frosting" /> : null}
+          {pieces.map((piece) => (
+            <CakePiece
+              key={piece.id}
+              piece={piece}
+              isTrayFull={isTrayFull}
+              canMove={interactionMode === 'move'}
+              onMoveToTray={onMovePieceToTray}
+            />
+          ))}
+          <ToppingLayer toppings={toppings} cutToppingIds={cutToppingIds} pieces={pieces} />
+          {pendingCutAngles.map((angle) => {
+            const point = polarToCartesian(center, center, pendingCutLineRadius, angle)
+
+            return (
+              <g key={angle} className="pending-cut">
+                <line
+                  x1={center}
+                  y1={center}
+                  x2={point.x}
+                  y2={point.y}
+                  className="pending-cut-line pending-cut-line--halo"
+                />
+                <line
+                  x1={center}
+                  y1={center}
+                  x2={point.x}
+                  y2={point.y}
+                  className="pending-cut-line"
+                  style={{ stroke: cake.guideColor }}
+                />
+                <circle cx={point.x} cy={point.y} r="5.5" className="pending-cut-dot" />
+                <circle cx={center} cy={center} r="4.5" className="pending-cut-dot" />
+              </g>
+            )
+          })}
+          {interactionMode === 'cut' ? (
+            <CuttingGuide cuts={currentCuts} color={cake.guideColor} />
+          ) : null}
+          <CakePieceLabels pieces={pieces} />
+          {swipeStart !== null && swipeEnd !== null ? (
+            <line
+              x1={swipeStart.x}
+              y1={swipeStart.y}
+              x2={swipeEnd.x}
+              y2={swipeEnd.y}
+              className="cut-swipe"
+            />
+          ) : null}
+          <circle cx="120" cy="120" r="18" className="cake-center" style={{ fill: cake.centerColor }} />
+        </svg>
+      </div>
+      <p className="cake-board__notice">
+        {activeCuts === null ? 'まるごとのケーキです。' : `最後は${activeCuts}等分の線で切りました。`} {cutNotice}
+      </p>
+    </section>
+  )
+}
