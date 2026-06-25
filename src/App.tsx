@@ -9,8 +9,15 @@ import { Tray } from './components/Tray'
 import { cakes, getCakeById } from './data/cakes'
 import { orders } from './data/orders'
 import { stages } from './data/stages'
-import type { CakeKind, CakePieceModel, InteractionMode, Order, ResultState } from './types/game'
-import { createWholeCakePiece, cutCakePieces } from './utils/cakeGeometry'
+import type {
+  CakeKind,
+  CakePieceModel,
+  Fraction,
+  InteractionMode,
+  Order,
+  ResultState,
+} from './types/game'
+import { createWholeCakePiece, cutCakePieces, normalizeAngle } from './utils/cakeGeometry'
 import {
   addFractions,
   areFractionsEqual,
@@ -21,6 +28,7 @@ import './styles/global.css'
 import './styles/game.css'
 
 const maxTrayPieces = 3
+const visibleCustomerCount = 5
 const stage = stages[0]
 const stageOrders = orders.filter((order) => stage.orderIds.includes(order.id))
 const initialCake = getCakeById('shortcake')
@@ -39,6 +47,35 @@ const recipeBonusReward = 180
 interface DifficultyRange {
   min: number
   max: number
+}
+
+interface CarriedPieceState {
+  fraction: Fraction
+  x: number
+  y: number
+}
+
+const getVisibleQueueOrders = (activeOrder: Order): Order[] => {
+  const activeIndex = stageOrders.findIndex((order) => order.id === activeOrder.id)
+  const startIndex = activeIndex === -1 ? 0 : activeIndex
+
+  return Array.from(
+    { length: visibleCustomerCount },
+    (_, index) => stageOrders[(startIndex + index) % stageOrders.length],
+  )
+}
+
+const getCutAngleKey = (angle: number): string => normalizeAngle(angle).toFixed(3)
+
+const mergeCutMarkAngles = (currentAngles: number[], nextAngles: number[]): number[] => {
+  const angleMap = new Map<string, number>()
+
+  ;[...currentAngles, ...nextAngles].forEach((angle) => {
+    const normalizedAngle = normalizeAngle(angle)
+    angleMap.set(getCutAngleKey(normalizedAngle), normalizedAngle)
+  })
+
+  return Array.from(angleMap.values()).sort((left, right) => left - right)
 }
 
 const getDifficultyRange = (servedCount: number, comboCount: number): DifficultyRange => {
@@ -134,12 +171,15 @@ function App() {
     createWholeCakePiece(initialCake),
   ])
   const [selectedPieces, setSelectedPieces] = useState<CakePieceModel[]>([])
+  const [cutMarkAngles, setCutMarkAngles] = useState<number[]>([])
+  const [carriedPiece, setCarriedPiece] = useState<CarriedPieceState | null>(null)
   const [result, setResult] = useState<ResultState>(idleResult)
   const [money, setMoney] = useState(0)
   const [combo, setCombo] = useState(0)
 
   const activeCake = getCakeById(activeCakeId)
   const activeOrder = stageOrders.find((order) => order.id === activeOrderId) ?? stageOrders[0]
+  const visibleQueueOrders = useMemo(() => getVisibleQueueOrders(activeOrder), [activeOrder])
 
   const cutToppingIds = useMemo(
     () =>
@@ -155,6 +195,8 @@ function App() {
 
     setSelectedPieces([])
     setBoardPieces([createWholeCakePiece(cake)])
+    setCutMarkAngles([])
+    setCarriedPiece(null)
     setActiveCuts(null)
     setInteractionMode('cut')
   }
@@ -179,15 +221,26 @@ function App() {
     const nextBatch = cutBatch + 1
     setActiveCuts(cuts)
     setCutBatch(nextBatch)
+    setCutMarkAngles((currentAngles) => mergeCutMarkAngles(currentAngles, cutAngles))
     setBoardPieces((currentPieces) =>
       cutCakePieces(currentPieces, cutAngles, activeCake.toppings, nextBatch, activeCake),
     )
     setResult(idleResult)
   }
 
-  const handleSelectOrder = (orderId: string): void => {
-    setActiveOrderId(orderId)
-    clearTray()
+  const handleCarryPieceChange = (
+    piece: CakePieceModel,
+    position: { x: number; y: number } | null,
+  ): void => {
+    setCarriedPiece(
+      position === null
+        ? null
+        : {
+            fraction: piece.fraction,
+            x: position.x,
+            y: position.y,
+          },
+    )
   }
 
   const handleSelectCake = (cakeId: CakeKind): void => {
@@ -390,10 +443,8 @@ function App() {
 
       <div className="game-layout">
         <CustomerQueue
-          orders={[activeOrder]}
+          orders={visibleQueueOrders}
           activeOrderId={activeOrder.id}
-          getCakeName={(cakeId) => getCakeById(cakeId).name}
-          onSelectOrder={handleSelectOrder}
         />
 
         <section className="play-area">
@@ -411,28 +462,14 @@ function App() {
             cake={activeCake}
             toppings={activeCake.toppings}
             cutToppingIds={cutToppingIds}
+            cutMarkAngles={cutMarkAngles}
             isTrayFull={selectedPieces.length >= maxTrayPieces}
             interactionMode={interactionMode}
             currentCuts={currentCuts}
             activeCuts={activeCuts}
             onCutCake={handleCutCake}
             onMovePieceToTray={handleMovePieceToTray}
-          />
-          <Tray
-            selectedPieces={selectedPieces}
-            total={total}
-            maxPieces={maxTrayPieces}
-            onRemovePiece={handleReturnPieceToBoard}
-            onDropPiece={handleMovePieceToTrayById}
-          />
-          <GameControls
-            allowedCuts={stage.allowedCuts}
-            currentCuts={currentCuts}
-            interactionMode={interactionMode}
-            onChangeCuts={handleChangeCuts}
-            onChangeInteractionMode={setInteractionMode}
-            onServe={handleServe}
-            onClear={clearTray}
+            onCarryPieceChange={handleCarryPieceChange}
           />
         </section>
 
@@ -450,8 +487,33 @@ function App() {
             <p>切り方を変えて切っても、トレイのピースは残ります。</p>
             <p>トッピングを切らずに出せたら、なおよしです。</p>
           </section>
+          <Tray
+            selectedPieces={selectedPieces}
+            total={total}
+            maxPieces={maxTrayPieces}
+            onRemovePiece={handleReturnPieceToBoard}
+            onDropPiece={handleMovePieceToTrayById}
+          />
+          <GameControls
+            allowedCuts={stage.allowedCuts}
+            currentCuts={currentCuts}
+            interactionMode={interactionMode}
+            onChangeCuts={handleChangeCuts}
+            onChangeInteractionMode={setInteractionMode}
+            onServe={handleServe}
+            onClear={clearTray}
+          />
         </aside>
       </div>
+      {carriedPiece !== null ? (
+        <div
+          className="carry-badge"
+          style={{ left: carriedPiece.x, top: carriedPiece.y }}
+          aria-live="polite"
+        >
+          運び中: {formatFraction(carriedPiece.fraction)}
+        </div>
+      ) : null}
     </main>
   )
 }

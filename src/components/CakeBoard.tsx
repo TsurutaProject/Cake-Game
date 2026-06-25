@@ -11,12 +11,17 @@ interface CakeBoardProps {
   cake: CakeDefinition
   toppings: Topping[]
   cutToppingIds: string[]
+  cutMarkAngles: number[]
   isTrayFull: boolean
   interactionMode: InteractionMode
   currentCuts: number
   activeCuts: number | null
   onCutCake: (cuts: number, cutAngles: number[]) => void
   onMovePieceToTray: (piece: CakePieceModel) => void
+  onCarryPieceChange: (
+    piece: CakePieceModel,
+    position: { x: number; y: number } | null,
+  ) => void
 }
 
 interface BoardPoint {
@@ -135,12 +140,14 @@ export function CakeBoard({
   cake,
   toppings,
   cutToppingIds,
+  cutMarkAngles,
   isTrayFull,
   interactionMode,
   currentCuts,
   activeCuts,
   onCutCake,
   onMovePieceToTray,
+  onCarryPieceChange,
 }: CakeBoardProps) {
   const [swipeStart, setSwipeStart] = useState<BoardPoint | null>(null)
   const [swipeEnd, setSwipeEnd] = useState<BoardPoint | null>(null)
@@ -238,9 +245,32 @@ export function CakeBoard({
               isTrayFull={isTrayFull}
               canMove={interactionMode === 'move'}
               onMoveToTray={onMovePieceToTray}
+              onCarryPieceChange={onCarryPieceChange}
             />
           ))}
           <ToppingLayer toppings={toppings} cutToppingIds={cutToppingIds} pieces={pieces} />
+          {cutMarkAngles.map((angle) => {
+            const point = polarToCartesian(center, center, pendingCutLineRadius, angle)
+
+            return (
+              <g key={angle} className="cut-mark">
+                <line
+                  x1={center}
+                  y1={center}
+                  x2={point.x}
+                  y2={point.y}
+                  className="cut-mark-line cut-mark-line--halo"
+                />
+                <line
+                  x1={center}
+                  y1={center}
+                  x2={point.x}
+                  y2={point.y}
+                  className="cut-mark-line"
+                />
+              </g>
+            )
+          })}
           {pendingCutAngles.map((angle) => {
             const point = polarToCartesian(center, center, pendingCutLineRadius, angle)
 

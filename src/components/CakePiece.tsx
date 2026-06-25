@@ -7,12 +7,24 @@ interface CakePieceProps {
   isTrayFull: boolean
   canMove: boolean
   onMoveToTray: (piece: CakePieceModel) => void
+  onCarryPieceChange: (piece: CakePieceModel, position: CarryPosition | null) => void
+}
+
+interface CarryPosition {
+  x: number
+  y: number
 }
 
 const center = 120
 const radius = 104
 
-export function CakePiece({ piece, isTrayFull, canMove, onMoveToTray }: CakePieceProps) {
+export function CakePiece({
+  piece,
+  isTrayFull,
+  canMove,
+  onMoveToTray,
+  onCarryPieceChange,
+}: CakePieceProps) {
   const middleAngle = (piece.startAngle + piece.endAngle) / 2
   const isWholePiece = piece.endAngle - piece.startAngle >= 359.999
   const offsetAngle = ((middleAngle - 90) * Math.PI) / 180
@@ -21,18 +33,22 @@ export function CakePiece({ piece, isTrayFull, canMove, onMoveToTray }: CakePiec
     y: (isWholePiece ? 0 : 4) * Math.sin(offsetAngle),
   }
   const handlePointerDown = (event: PointerEvent<SVGPathElement>): void => {
-    if (!canMove) {
+    if (!canMove || isTrayFull) {
       return
     }
 
     event.preventDefault()
     window.getSelection()?.removeAllRanges()
+    onCarryPieceChange(piece, { x: event.clientX, y: event.clientY })
+
+    const handleDocumentPointerMove = (event: globalThis.PointerEvent): void => {
+      onCarryPieceChange(piece, { x: event.clientX, y: event.clientY })
+    }
 
     const handleDocumentPointerUp = (event: globalThis.PointerEvent): void => {
-      if (isTrayFull) {
-        return
-      }
-
+      document.removeEventListener('pointermove', handleDocumentPointerMove)
+      document.removeEventListener('pointercancel', handleDocumentPointerCancel)
+      onCarryPieceChange(piece, null)
       const droppedElement = document.elementFromPoint(event.clientX, event.clientY)
 
       if (droppedElement?.closest('.tray') !== null) {
@@ -40,7 +56,15 @@ export function CakePiece({ piece, isTrayFull, canMove, onMoveToTray }: CakePiec
       }
     }
 
+    const handleDocumentPointerCancel = (): void => {
+      document.removeEventListener('pointermove', handleDocumentPointerMove)
+      document.removeEventListener('pointerup', handleDocumentPointerUp)
+      onCarryPieceChange(piece, null)
+    }
+
+    document.addEventListener('pointermove', handleDocumentPointerMove)
     document.addEventListener('pointerup', handleDocumentPointerUp, { once: true })
+    document.addEventListener('pointercancel', handleDocumentPointerCancel, { once: true })
   }
 
   if (isWholePiece) {
