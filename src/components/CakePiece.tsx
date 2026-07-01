@@ -4,6 +4,7 @@ import { describeCakeSlice } from '../utils/cakeGeometry'
 
 interface CakePieceProps {
   piece: CakePieceModel
+  imageFill: string
   isTrayFull: boolean
   canMove: boolean
   onMoveToTray: (piece: CakePieceModel) => void
@@ -20,6 +21,7 @@ const radius = 104
 
 export function CakePiece({
   piece,
+  imageFill,
   isTrayFull,
   canMove,
   onMoveToTray,
@@ -70,7 +72,7 @@ export function CakePiece({
   if (isWholePiece) {
     return (
       <g className="cake-piece">
-        <circle cx={center} cy={center} r={radius} fill={piece.color} aria-label="まるごとのケーキ" />
+        <circle cx={center} cy={center} r={radius} fill={imageFill} aria-label="まるごとのケーキ" />
       </g>
     )
   }
@@ -82,7 +84,7 @@ export function CakePiece({
     >
       <path
         d={describeCakeSlice(center, center, radius, piece.startAngle, piece.endAngle)}
-        fill={piece.color}
+        fill={imageFill}
         onPointerDown={handlePointerDown}
         aria-label="切ったピース"
       />

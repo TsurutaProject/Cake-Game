@@ -5,6 +5,8 @@ export interface Fraction {
 
 export type CakeKind = 'shortcake' | 'chocolate'
 
+export type CustomerKind = 'おれんじ' | 'きゅーぶ' | 'ペンギン'
+
 export interface CakePieceModel {
   id: string
   fraction: Fraction
@@ -16,7 +18,7 @@ export interface CakePieceModel {
   pendingCutAngles: number[]
 }
 
-export type ToppingKind = 'strawberry' | 'chocolate' | 'cream'
+export type ToppingKind = 'strawberry' | 'banana' | 'cream'
 
 export interface Topping {
   id: string
@@ -31,6 +33,7 @@ export interface CakeDefinition {
   name: string
   price: number
   description: string
+  imageUrl: string
   baseColor: string
   crustColor: string
   centerColor: string
@@ -41,7 +44,7 @@ export interface CakeDefinition {
 
 export interface Order {
   id: string
-  customerName: string
+  customerName: CustomerKind
   age: number
   gender: 'girl' | 'boy' | 'adult'
   cakeKind: CakeKind
@@ -58,6 +61,24 @@ export interface Stage {
   allowedCuts: number[]
   orderIds: string[]
 }
+
+export type TrophyMetric =
+  | 'servedCount'
+  | 'bestCombo'
+  | 'totalEarned'
+  | 'cleanServes'
+  | 'recipeServes'
+  | 'unlockedCakeCount'
+
+export interface TrophyDefinition {
+  id: string
+  title: string
+  description: string
+  metric: TrophyMetric
+  target: number
+}
+
+export type TrophyProgress = Record<TrophyMetric, number>
 
 export type ResultKind = 'idle' | 'success' | 'bonus' | 'try-again' | 'warning'
 

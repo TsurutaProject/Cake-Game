@@ -1,5 +1,6 @@
 import { useRef, useState, type MouseEvent, type PointerEvent } from 'react'
 import type { CakeDefinition, CakePieceModel, InteractionMode, Topping } from '../types/game'
+import { toolImages } from '../data/assets'
 import { normalizeAngle, polarToCartesian } from '../utils/cakeGeometry'
 import { CakePiece } from './CakePiece'
 import { CakePieceLabels } from './CakePieceLabels'
@@ -13,6 +14,7 @@ interface CakeBoardProps {
   cutToppingIds: string[]
   cutMarkAngles: number[]
   isTrayFull: boolean
+  isCarryingPiece: boolean
   interactionMode: InteractionMode
   currentCuts: number
   activeCuts: number | null
@@ -25,6 +27,11 @@ interface CakeBoardProps {
 }
 
 interface BoardPoint {
+  x: number
+  y: number
+}
+
+interface ToolCursorPosition {
   x: number
   y: number
 }
@@ -142,6 +149,7 @@ export function CakeBoard({
   cutToppingIds,
   cutMarkAngles,
   isTrayFull,
+  isCarryingPiece,
   interactionMode,
   currentCuts,
   activeCuts,
@@ -152,8 +160,22 @@ export function CakeBoard({
   const [swipeStart, setSwipeStart] = useState<BoardPoint | null>(null)
   const [swipeEnd, setSwipeEnd] = useState<BoardPoint | null>(null)
   const [cutNotice, setCutNotice] = useState('点線に沿ってケーキをスワイプすると切れます。')
+  const [toolCursorPosition, setToolCursorPosition] = useState<ToolCursorPosition | null>(null)
   const shouldSuppressNextClick = useRef(false)
   const pendingCutAngles = getPendingCutAngles(pieces)
+
+  const handleSurfacePointerMove = (event: PointerEvent<HTMLDivElement>): void => {
+    if (event.pointerType === 'touch') {
+      setToolCursorPosition(null)
+      return
+    }
+
+    const bounds = event.currentTarget.getBoundingClientRect()
+    setToolCursorPosition({
+      x: event.clientX - bounds.left,
+      y: event.clientY - bounds.top,
+    })
+  }
 
   const handlePointerDown = (event: PointerEvent<SVGSVGElement>): void => {
     if (interactionMode !== 'cut') {
@@ -225,7 +247,11 @@ export function CakeBoard({
 
   return (
     <section className="cake-board" aria-label="ケーキを切る場所">
-      <div className="cake-board__surface">
+      <div
+        className="cake-board__surface has-tool-cursor"
+        onPointerMove={handleSurfacePointerMove}
+        onPointerLeave={() => setToolCursorPosition(null)}
+      >
         <svg
           viewBox="0 0 240 240"
           className="cake-svg"
@@ -236,12 +262,21 @@ export function CakeBoard({
           onPointerUp={handlePointerUp}
           onClickCapture={handleClickCapture}
         >
-          <circle cx="120" cy="120" r="112" className="cake-crust" style={{ fill: cake.crustColor }} />
-          {pieces.length === 0 ? <circle cx="120" cy="120" r="104" className="cake-frosting" /> : null}
+          <defs>
+            <pattern
+              id={`cake-image-${cake.id}`}
+              patternUnits="userSpaceOnUse"
+              width="240"
+              height="240"
+            >
+              <image href={cake.imageUrl} x="0" y="0" width="240" height="240" />
+            </pattern>
+          </defs>
           {pieces.map((piece) => (
             <CakePiece
               key={piece.id}
               piece={piece}
+              imageFill={`url(#cake-image-${cake.id})`}
               isTrayFull={isTrayFull}
               canMove={interactionMode === 'move'}
               onMoveToTray={onMovePieceToTray}
@@ -311,6 +346,15 @@ export function CakeBoard({
           ) : null}
           <circle cx="120" cy="120" r="18" className="cake-center" style={{ fill: cake.centerColor }} />
         </svg>
+        {toolCursorPosition !== null && !isCarryingPiece ? (
+          <img
+            className={`tool-cursor tool-cursor--${interactionMode}`}
+            src={toolImages[interactionMode]}
+            alt=""
+            aria-hidden="true"
+            style={{ left: toolCursorPosition.x, top: toolCursorPosition.y }}
+          />
+        ) : null}
       </div>
       <p className="cake-board__notice">
         {activeCuts === null ? 'まるごとのケーキです。' : `最後は${activeCuts}等分の線で切りました。`} {cutNotice}

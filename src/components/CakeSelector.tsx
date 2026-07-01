@@ -33,11 +33,7 @@ export function CakeSelector({
               key={cake.id}
               className={cake.id === activeCakeId ? 'cake-option is-active' : 'cake-option'}
             >
-              <span
-                className="cake-option__swatch"
-                style={{ background: cake.baseColor, borderColor: cake.crustColor }}
-                aria-hidden="true"
-              />
+              <img className="cake-option__image" src={cake.imageUrl} alt="" />
               <div>
                 <h3>{cake.name}</h3>
                 <p>{cake.description}</p>

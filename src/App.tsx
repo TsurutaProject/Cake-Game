@@ -6,9 +6,12 @@ import { GameControls } from './components/GameControls'
 import { OrderBubble } from './components/OrderBubble'
 import { ResultMessage } from './components/ResultMessage'
 import { Tray } from './components/Tray'
+import { TrophyShelf } from './components/TrophyShelf'
 import { cakes, getCakeById } from './data/cakes'
 import { orders } from './data/orders'
 import { stages } from './data/stages'
+import { trophies } from './data/trophies'
+import { toolImages } from './data/assets'
 import type {
   CakeKind,
   CakePieceModel,
@@ -16,6 +19,7 @@ import type {
   InteractionMode,
   Order,
   ResultState,
+  TrophyProgress,
 } from './types/game'
 import { createWholeCakePiece, cutCakePieces, normalizeAngle } from './utils/cakeGeometry'
 import {
@@ -158,6 +162,11 @@ const matchesRecipe = (pieces: CakePieceModel[], recipePieces: Order['recipePiec
   return pieceFractions.every((fraction, index) => fraction === recipeFractions[index])
 }
 
+const getUnlockedTrophyIds = (progress: TrophyProgress): string[] =>
+  trophies
+    .filter((trophy) => progress[trophy.metric] >= trophy.target)
+    .map((trophy) => trophy.id)
+
 function App() {
   const [servedCount, setServedCount] = useState(0)
   const [activeOrderId, setActiveOrderId] = useState(() => selectNextOrderId(['shortcake'], 0, 0))
@@ -176,10 +185,23 @@ function App() {
   const [result, setResult] = useState<ResultState>(idleResult)
   const [money, setMoney] = useState(0)
   const [combo, setCombo] = useState(0)
+  const [bestCombo, setBestCombo] = useState(0)
+  const [totalEarned, setTotalEarned] = useState(0)
+  const [cleanServes, setCleanServes] = useState(0)
+  const [recipeServes, setRecipeServes] = useState(0)
 
   const activeCake = getCakeById(activeCakeId)
   const activeOrder = stageOrders.find((order) => order.id === activeOrderId) ?? stageOrders[0]
   const visibleQueueOrders = useMemo(() => getVisibleQueueOrders(activeOrder), [activeOrder])
+  const trophyProgress: TrophyProgress = {
+    servedCount,
+    bestCombo,
+    totalEarned,
+    cleanServes,
+    recipeServes,
+    unlockedCakeCount: unlockedCakeIds.length,
+  }
+  const unlockedTrophyIds = getUnlockedTrophyIds(trophyProgress)
 
   const cutToppingIds = useMemo(
     () =>
@@ -382,8 +404,16 @@ function App() {
         : ''
 
       setCombo(nextCombo)
+      setBestCombo((currentBestCombo) => Math.max(currentBestCombo, nextCombo))
       setMoney((currentMoney) => currentMoney + earnedMoney)
+      setTotalEarned((currentTotalEarned) => currentTotalEarned + earnedMoney)
       setServedCount(nextServedCount)
+      setCleanServes((currentCleanServes) =>
+        cutToppingLabels.length === 0 ? currentCleanServes + 1 : currentCleanServes,
+      )
+      setRecipeServes((currentRecipeServes) =>
+        recipeMatched ? currentRecipeServes + 1 : currentRecipeServes,
+      )
       setActiveOrderId(nextOrderId)
       resetBoardState(activeCake.id)
 
@@ -422,7 +452,7 @@ function App() {
   }
 
   return (
-    <main className="game-shell">
+    <main className={carriedPiece === null ? 'game-shell' : 'game-shell is-carrying-piece'}>
       <header className="game-header">
         <div>
           <p className="game-header__eyebrow">Fraction Cake Shop</p>
@@ -442,10 +472,17 @@ function App() {
       </header>
 
       <div className="game-layout">
-        <CustomerQueue
-          orders={visibleQueueOrders}
-          activeOrderId={activeOrder.id}
-        />
+        <div className="left-panel">
+          <CustomerQueue
+            orders={visibleQueueOrders}
+            activeOrderId={activeOrder.id}
+          />
+          <TrophyShelf
+            trophies={trophies}
+            unlockedTrophyIds={unlockedTrophyIds}
+            progress={trophyProgress}
+          />
+        </div>
 
         <section className="play-area">
           <OrderBubble order={activeOrder} cakeName={getCakeById(activeOrder.cakeKind).name} />
@@ -464,6 +501,7 @@ function App() {
             cutToppingIds={cutToppingIds}
             cutMarkAngles={cutMarkAngles}
             isTrayFull={selectedPieces.length >= maxTrayPieces}
+            isCarryingPiece={carriedPiece !== null}
             interactionMode={interactionMode}
             currentCuts={currentCuts}
             activeCuts={activeCuts}
@@ -506,13 +544,22 @@ function App() {
         </aside>
       </div>
       {carriedPiece !== null ? (
-        <div
-          className="carry-badge"
-          style={{ left: carriedPiece.x, top: carriedPiece.y }}
-          aria-live="polite"
-        >
-          運び中: {formatFraction(carriedPiece.fraction)}
-        </div>
+        <>
+          <img
+            className="tool-cursor tool-cursor--move tool-cursor--carrying"
+            src={toolImages.move}
+            alt=""
+            aria-hidden="true"
+            style={{ left: carriedPiece.x, top: carriedPiece.y }}
+          />
+          <div
+            className="carry-badge"
+            style={{ left: carriedPiece.x, top: carriedPiece.y }}
+            aria-live="polite"
+          >
+            運び中: {formatFraction(carriedPiece.fraction)}
+          </div>
+        </>
       ) : null}
     </main>
   )

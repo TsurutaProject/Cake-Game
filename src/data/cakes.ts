@@ -1,4 +1,5 @@
 import type { CakeDefinition } from '../types/game'
+import { cakeImages } from './assets'
 
 export const cakes: CakeDefinition[] = [
   {
@@ -6,6 +7,7 @@ export const cakes: CakeDefinition[] = [
     name: 'ショートケーキ',
     price: 0,
     description: '白いクリームとイチゴの定番ケーキ。',
+    imageUrl: cakeImages.shortcake,
     baseColor: '#fff4df',
     crustColor: '#d49a63',
     centerColor: '#fff0b2',
@@ -20,9 +22,9 @@ export const cakes: CakeDefinition[] = [
         radius: 66,
       },
       {
-        id: 'short-chocolate-right',
-        kind: 'chocolate',
-        label: 'チョコ',
+        id: 'short-banana-right',
+        kind: 'banana',
+        label: 'バナナ',
         angle: 54,
         radius: 82,
       },
@@ -40,6 +42,7 @@ export const cakes: CakeDefinition[] = [
     name: 'チョコレートケーキ',
     price: 1000,
     description: 'トッピングがななめに並ぶ、少し切り方を考えるケーキ。',
+    imageUrl: cakeImages.chocolate,
     baseColor: '#6f3f2f',
     crustColor: '#3b2119',
     centerColor: '#c88954',
@@ -61,9 +64,9 @@ export const cakes: CakeDefinition[] = [
         radius: 78,
       },
       {
-        id: 'choco-bar-left',
-        kind: 'chocolate',
-        label: 'チョコ',
+        id: 'choco-banana-left',
+        kind: 'banana',
+        label: 'バナナ',
         angle: 0,
         radius: 72,
       },

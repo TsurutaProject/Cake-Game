@@ -3,7 +3,7 @@ import type { Order } from '../types/game'
 export const orders: Order[] = [
   {
     id: 'half',
-    customerName: 'みお',
+    customerName: 'おれんじ',
     age: 8,
     gender: 'girl',
     cakeKind: 'shortcake',
@@ -13,7 +13,7 @@ export const orders: Order[] = [
   },
   {
     id: 'one-quarter',
-    customerName: 'はな',
+    customerName: 'きゅーぶ',
     age: 7,
     gender: 'girl',
     cakeKind: 'shortcake',
@@ -23,7 +23,7 @@ export const orders: Order[] = [
   },
   {
     id: 'three-quarters',
-    customerName: 'そうた',
+    customerName: 'ペンギン',
     age: 9,
     gender: 'boy',
     cakeKind: 'shortcake',
@@ -33,7 +33,7 @@ export const orders: Order[] = [
   },
   {
     id: 'one-third',
-    customerName: 'あおい',
+    customerName: 'おれんじ',
     age: 32,
     gender: 'adult',
     cakeKind: 'shortcake',
@@ -43,7 +43,7 @@ export const orders: Order[] = [
   },
   {
     id: 'two-thirds',
-    customerName: 'れん',
+    customerName: 'きゅーぶ',
     age: 10,
     gender: 'boy',
     cakeKind: 'shortcake',
@@ -53,7 +53,7 @@ export const orders: Order[] = [
   },
   {
     id: 'mix-half',
-    customerName: 'りく',
+    customerName: 'ペンギン',
     age: 10,
     gender: 'boy',
     cakeKind: 'shortcake',
@@ -68,7 +68,7 @@ export const orders: Order[] = [
   },
   {
     id: 'chocolate-half',
-    customerName: 'ゆい',
+    customerName: 'おれんじ',
     age: 8,
     gender: 'girl',
     cakeKind: 'chocolate',
@@ -78,7 +78,7 @@ export const orders: Order[] = [
   },
   {
     id: 'chocolate-one-third',
-    customerName: 'まな',
+    customerName: 'きゅーぶ',
     age: 9,
     gender: 'girl',
     cakeKind: 'chocolate',
@@ -88,7 +88,7 @@ export const orders: Order[] = [
   },
   {
     id: 'chocolate-three-quarters',
-    customerName: 'けん',
+    customerName: 'ペンギン',
     age: 11,
     gender: 'boy',
     cakeKind: 'chocolate',
@@ -98,7 +98,7 @@ export const orders: Order[] = [
   },
   {
     id: 'chocolate-two-thirds',
-    customerName: 'さら',
+    customerName: 'おれんじ',
     age: 11,
     gender: 'girl',
     cakeKind: 'chocolate',

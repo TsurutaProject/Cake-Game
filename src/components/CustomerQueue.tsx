@@ -1,4 +1,5 @@
 import type { Order } from '../types/game'
+import { customerImages } from '../data/assets'
 
 interface CustomerQueueProps {
   orders: Order[]
@@ -17,7 +18,7 @@ export function CustomerQueue({ orders, activeOrderId }: CustomerQueueProps) {
             }
           >
             <span className="customer-queue__avatar" aria-hidden="true">
-              {order.customerName.slice(0, 1)}
+              <img src={customerImages[order.customerName]} alt="" />
             </span>
             <span className="customer-queue__details">
               <strong>{order.customerName}さん</strong>

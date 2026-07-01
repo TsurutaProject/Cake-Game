@@ -72,17 +72,27 @@
   align-items: start;
 }
 
+.left-panel,
 .customer-queue,
 .play-area,
 .side-panel,
 .order-bubble,
 .tray,
+.trophy-shelf,
 .hint-panel,
 .result-message {
   border: 2px solid rgba(112, 83, 70, 0.14);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.86);
   box-shadow: 0 18px 36px rgba(80, 48, 32, 0.1);
+}
+
+.left-panel {
+  display: grid;
+  gap: 14px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 
 .customer-queue {
@@ -121,9 +131,16 @@
   width: 42px;
   height: 42px;
   place-items: center;
+  overflow: hidden;
   border-radius: 50%;
   background: #84dcc6;
   font-weight: 900;
+}
+
+.customer-queue__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .customer-queue small {
@@ -140,6 +157,166 @@
 .customer-queue__details strong,
 .customer-queue__details small {
   overflow-wrap: anywhere;
+}
+
+.trophy-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.trophy-shelf {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  height: 220px;
+  max-height: 220px;
+  padding: 12px;
+  overflow: hidden;
+}
+
+.trophy-shelf--earned {
+  max-height: 220px;
+}
+
+.trophy-shelf__header {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.trophy-shelf__header h2,
+.trophy-shelf__header p {
+  margin: 0;
+}
+
+.trophy-shelf__header h2 {
+  font-size: 1.05rem;
+}
+
+.trophy-shelf__header p {
+  color: #795548;
+  font-weight: 900;
+}
+
+.trophy-list {
+  display: grid;
+  gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  overscroll-behavior: contain;
+}
+
+.trophy-list--earned .trophy-card {
+  padding: 8px;
+}
+
+.trophy-list--earned .trophy-card__meter,
+.trophy-list--earned .trophy-card__progress {
+  display: none;
+}
+
+.trophy-empty {
+  margin: 0;
+  padding: 10px;
+  border: 2px dashed rgba(112, 83, 70, 0.16);
+  border-radius: 8px;
+  color: #795548;
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.trophy-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.trophy-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(121, 85, 72, 0.28);
+}
+
+.trophy-card {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 8px;
+  padding: 9px;
+  border: 2px solid rgba(112, 83, 70, 0.12);
+  border-radius: 8px;
+  background: #f7f0e5;
+  color: #6f625b;
+  opacity: 0.72;
+}
+
+.trophy-card.is-unlocked {
+  border-color: rgba(247, 157, 101, 0.72);
+  background: #fff7d6;
+  color: #2d2420;
+  opacity: 1;
+}
+
+.trophy-card__icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: #d9cdbc;
+  color: #fffaf1;
+  font-weight: 900;
+}
+
+.trophy-card.is-unlocked .trophy-card__icon {
+  background: #f27059;
+}
+
+.trophy-card__body {
+  min-width: 0;
+}
+
+.trophy-card__title {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.trophy-card h3,
+.trophy-card p {
+  margin: 0;
+}
+
+.trophy-card h3 {
+  font-size: 0.9rem;
+}
+
+.trophy-card p,
+.trophy-card small {
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.trophy-card__title small,
+.trophy-card__progress {
+  color: #795548;
+  font-weight: 900;
+}
+
+.trophy-card__meter {
+  height: 8px;
+  overflow: hidden;
+  margin: 6px 0 2px;
+  border-radius: 999px;
+  background: rgba(112, 83, 70, 0.14);
+}
+
+.trophy-card__meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #84dcc6, #f27059);
+  transition: width 180ms ease;
 }
 
 .play-area,
@@ -229,11 +406,11 @@
   background: #f3fff9;
 }
 
-.cake-option__swatch {
+.cake-option__image {
   width: 38px;
   height: 38px;
-  border: 5px solid;
   border-radius: 50%;
+  object-fit: contain;
 }
 
 .cake-option button {
@@ -289,6 +466,7 @@
 }
 
 .cake-board__surface {
+  position: relative;
   width: min(100%, 420px);
   aspect-ratio: 1;
   display: grid;
@@ -300,6 +478,40 @@
     #f7d7aa;
   background-size: 28px 100%;
   box-shadow: inset 0 0 0 4px rgba(255, 255, 255, 0.35);
+}
+
+.cake-board__surface.has-tool-cursor,
+.cake-board__surface.has-tool-cursor * {
+  cursor: none !important;
+}
+
+.tool-cursor {
+  position: absolute;
+  z-index: 8;
+  width: 76px;
+  height: 76px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 5px 4px rgba(45, 36, 32, 0.24));
+}
+
+.tool-cursor--cut {
+  transform: translate(-20%, -18%);
+}
+
+.tool-cursor--move {
+  transform: translate(-42%, -28%);
+}
+
+.tool-cursor--carrying {
+  position: fixed;
+  z-index: 31;
+}
+
+.game-shell.is-carrying-piece,
+.game-shell.is-carrying-piece * {
+  cursor: none !important;
 }
 
 .cake-svg {
@@ -368,50 +580,11 @@
   filter: drop-shadow(0 3px 0 rgba(45, 36, 32, 0.16));
 }
 
-.topping__strawberry {
-  fill: #e63946;
-  stroke: #9f2532;
-  stroke-width: 1.5;
-}
-
-.topping__seed {
-  fill: #fff1bd;
-}
-
-.topping__leaf {
-  fill: none;
-  stroke: #2f9e44;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 4;
-}
-
-.topping__chocolate {
-  fill: #5c3427;
-  stroke: #2d1a14;
-  stroke-width: 1.5;
-}
-
-.topping__chocolate-line {
-  stroke: rgba(255, 255, 255, 0.25);
-  stroke-width: 1.5;
-}
-
-.topping__cream {
-  fill: #fff8ec;
-  stroke: #d6b48c;
-  stroke-width: 1.5;
-}
-
-.topping__cream-shine {
-  fill: #ffffff;
-}
-
 .topping--cut {
   opacity: 0.72;
 }
 
-.topping--cut > line:not(.topping__chocolate-line) {
+.topping__cut-line {
   stroke: #2d2420;
   stroke-linecap: round;
   stroke-width: 3;
@@ -662,18 +835,68 @@
 }
 
 .result-overlay .result-message {
-  width: min(92vw, 460px);
-  gap: 12px;
-  padding: 22px;
+  width: min(94vw, 760px);
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.result-message__scene {
+  display: grid;
+  grid-template-columns: minmax(100px, 160px) minmax(0, 1fr);
+  align-items: end;
+  width: 100%;
+}
+
+.result-message__face {
+  z-index: 1;
+  width: 100%;
+  max-width: 160px;
+  aspect-ratio: 1;
+  margin: 0 -12px 8% 0;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 18px rgba(45, 36, 32, 0.2));
+}
+
+.result-message__bubble {
+  position: relative;
+  aspect-ratio: 1.2;
+  overflow: hidden;
+}
+
+.result-message__bubble > img {
+  position: absolute;
+  top: -18%;
+  left: 0;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+  user-select: none;
+}
+
+.result-message__content {
+  position: absolute;
+  inset: 9% 8% 25% 12%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  color: #4b3428;
   text-align: center;
 }
 
-.result-overlay .result-message strong {
-  font-size: 1.4rem;
+.result-message__content strong {
+  font-size: 1.35rem;
+}
+
+.result-message__content > span {
+  align-self: center;
+  overflow-y: auto;
+  line-height: 1.55;
 }
 
 .result-overlay .button {
-  justify-self: center;
   min-width: 110px;
 }
 
@@ -708,6 +931,33 @@
   color: #6b3d12;
 }
 
+@media (max-width: 620px) {
+  .result-message__scene {
+    grid-template-columns: 90px minmax(0, 1fr);
+  }
+
+  .result-message__content {
+    inset: 8% 7% 24% 11%;
+    gap: 6px;
+    font-size: 0.78rem;
+  }
+
+  .result-message__content strong {
+    font-size: 1rem;
+  }
+
+  .result-message__actions {
+    gap: 6px;
+  }
+
+  .result-overlay .button {
+    width: auto;
+    min-width: 86px;
+    min-height: 36px;
+    padding-inline: 10px;
+  }
+}
+
 @media (max-width: 960px) {
   .game-header {
     align-items: start;
@@ -724,6 +974,15 @@
 
   .customer-queue__list {
     grid-template-columns: repeat(5, minmax(132px, 1fr));
+  }
+
+  .trophy-shelf {
+    height: 200px;
+    max-height: 200px;
+  }
+
+  .trophy-shelf--earned {
+    max-height: 200px;
   }
 
   .cake-board {
@@ -746,6 +1005,15 @@
 
   .customer-queue__list {
     grid-template-columns: repeat(5, minmax(124px, 1fr));
+  }
+
+  .trophy-shelf {
+    height: 180px;
+    max-height: 180px;
+  }
+
+  .trophy-shelf--earned {
+    max-height: 180px;
   }
 
   .order-bubble {
