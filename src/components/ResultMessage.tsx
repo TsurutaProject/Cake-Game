@@ -1,5 +1,6 @@
 import type { ResultState } from '../types/game'
 import { feedbackImages } from '../data/assets'
+import { FuriganaText } from './FuriganaText'
 
 interface ResultMessageProps {
   result: ResultState
@@ -9,7 +10,7 @@ interface ResultMessageProps {
 
 export function ResultMessage({ result, onDismiss, onConfirm }: ResultMessageProps) {
   if (result.kind === 'idle') {
-    return <p className="result-message">まな板のピースをトレイへ移したら「販売する」を押そう。</p>
+    return null
   }
 
   const isWarning = result.kind === 'warning'
@@ -34,12 +35,12 @@ export function ResultMessage({ result, onDismiss, onConfirm }: ResultMessagePro
           <div className="result-message__bubble">
             <img src={feedbackImages.speechBubble} alt="" aria-hidden="true" />
             <div className="result-message__content">
-              <strong id="result-title">{result.title}</strong>
-              <span>{result.detail}</span>
+              <strong id="result-title"><FuriganaText text={result.title} /></strong>
+              <span><FuriganaText text={result.detail} /></span>
               <div className="result-message__actions">
                 {isWarning ? (
                   <button type="button" className="button button--secondary" onClick={onDismiss}>
-                    {result.secondaryLabel ?? '戻る'}
+                    <FuriganaText text={result.secondaryLabel ?? '戻る'} />
                   </button>
                 ) : null}
                 <button
@@ -47,7 +48,7 @@ export function ResultMessage({ result, onDismiss, onConfirm }: ResultMessagePro
                   className="button button--primary"
                   onClick={isWarning ? onConfirm : onDismiss}
                 >
-                  {result.primaryLabel ?? 'OK'}
+                  <FuriganaText text={result.primaryLabel ?? 'OK'} />
                 </button>
               </div>
             </div>

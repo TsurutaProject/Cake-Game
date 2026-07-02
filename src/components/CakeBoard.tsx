@@ -6,6 +6,7 @@ import { CakePiece } from './CakePiece'
 import { CakePieceLabels } from './CakePieceLabels'
 import { CuttingGuide } from './CuttingGuide'
 import { ToppingLayer } from './ToppingLayer'
+import { FuriganaText } from './FuriganaText'
 
 interface CakeBoardProps {
   pieces: CakePieceModel[]
@@ -142,6 +143,21 @@ const pendingCutLineRadius = 104
 const getPendingCutAngles = (pieces: CakePieceModel[]): number[] =>
   Array.from(new Set(pieces.flatMap((piece) => piece.pendingCutAngles)))
 
+const isCutAngleInsideBoardPiece = (angle: number, pieces: CakePieceModel[]): boolean =>
+  pieces.some((piece) => {
+    if (piece.endAngle - piece.startAngle >= 359.999) {
+      return true
+    }
+
+    const normalizedAngle = normalizeAngle(angle)
+    const comparableAngle =
+      piece.endAngle > 360 && normalizedAngle < piece.startAngle
+        ? normalizedAngle + 360
+        : normalizedAngle
+
+    return comparableAngle > piece.startAngle + 0.001 && comparableAngle < piece.endAngle - 0.001
+  })
+
 export function CakeBoard({
   pieces,
   cake,
@@ -227,7 +243,16 @@ export function CakeBoard({
     }, 0)
 
     if (isSwipeOnGuide(currentCuts, swipeStart, end)) {
-      onCutCake(currentCuts, getCutAnglesFromSwipe(currentCuts, swipeStart, end))
+      const validCutAngles = getCutAnglesFromSwipe(currentCuts, swipeStart, end).filter((angle) =>
+        isCutAngleInsideBoardPiece(angle, pieces),
+      )
+
+      if (validCutAngles.length === 0) {
+        setCutNotice('そこにはケーキがありません。ケーキがある場所を切ってみよう。')
+        return
+      }
+
+      onCutCake(currentCuts, validCutAngles)
       setCutNotice(`${currentCuts}等分の線でスパッと切れました。ピースをトレイへ運ぼう。`)
       return
     }
@@ -357,7 +382,9 @@ export function CakeBoard({
         ) : null}
       </div>
       <p className="cake-board__notice">
-        {activeCuts === null ? 'まるごとのケーキです。' : `最後は${activeCuts}等分の線で切りました。`} {cutNotice}
+        <FuriganaText
+          text={`${activeCuts === null ? 'まるごとのケーキです。' : `最後は${activeCuts}等分の線で切りました。`} ${cutNotice}`}
+        />
       </p>
     </section>
   )

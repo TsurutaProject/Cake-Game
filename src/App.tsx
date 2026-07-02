@@ -3,6 +3,9 @@ import { CakeBoard } from './components/CakeBoard'
 import { CakeSelector } from './components/CakeSelector'
 import { CustomerQueue } from './components/CustomerQueue'
 import { GameControls } from './components/GameControls'
+import { GuidedTutorial, type GuidedTutorialStep } from './components/GuidedTutorial'
+import { HelpMenu } from './components/HelpMenu'
+import { FuriganaText } from './components/FuriganaText'
 import { OrderBubble } from './components/OrderBubble'
 import { ResultMessage } from './components/ResultMessage'
 import { Tray } from './components/Tray'
@@ -47,6 +50,15 @@ const baseReward = 300
 const toppingBonusReward = 120
 const compactPieceBonusReward = 80
 const recipeBonusReward = 180
+const tutorialStorageKey = 'fraction-cake-guided-tutorial-seen-v2'
+
+const shouldShowTutorial = (): boolean => {
+  try {
+    return window.localStorage.getItem(tutorialStorageKey) !== 'true'
+  } catch {
+    return true
+  }
+}
 
 interface DifficultyRange {
   min: number
@@ -168,8 +180,13 @@ const getUnlockedTrophyIds = (progress: TrophyProgress): string[] =>
     .map((trophy) => trophy.id)
 
 function App() {
+  const [guidedTutorialStep, setGuidedTutorialStep] = useState<GuidedTutorialStep | null>(
+    () => shouldShowTutorial() ? 'intro' : null,
+  )
   const [servedCount, setServedCount] = useState(0)
-  const [activeOrderId, setActiveOrderId] = useState(() => selectNextOrderId(['shortcake'], 0, 0))
+  const [activeOrderId, setActiveOrderId] = useState(() =>
+    shouldShowTutorial() ? 'half' : selectNextOrderId(['shortcake'], 0, 0),
+  )
   const [activeCakeId, setActiveCakeId] = useState<CakeKind>('shortcake')
   const [unlockedCakeIds, setUnlockedCakeIds] = useState<CakeKind[]>(['shortcake'])
   const [currentCuts, setCurrentCuts] = useState(stage.allowedCuts[0])
@@ -203,6 +220,24 @@ function App() {
   }
   const unlockedTrophyIds = getUnlockedTrophyIds(trophyProgress)
 
+  const rememberTutorialCompletion = (): void => {
+    try {
+      window.localStorage.setItem(tutorialStorageKey, 'true')
+    } catch {
+      // The tutorial still closes when browser storage is unavailable.
+    }
+  }
+
+  const skipGuidedTutorial = (): void => {
+    setGuidedTutorialStep(null)
+    rememberTutorialCompletion()
+  }
+
+  const openGuidedTutorial = (): void => {
+    setGuidedTutorialStep('intro')
+    setResult(idleResult)
+  }
+
   const cutToppingIds = useMemo(
     () =>
       Array.from(
@@ -233,7 +268,26 @@ function App() {
     setResult(idleResult)
   }
 
+  const advanceGuidedTutorial = (): void => {
+    if (guidedTutorialStep === 'intro') {
+      setActiveOrderId('half')
+      setActiveCakeId('shortcake')
+      setCurrentCuts(2)
+      resetCakeBoard('shortcake')
+      setGuidedTutorialStep('order')
+      return
+    }
+
+    if (guidedTutorialStep === 'order') {
+      setGuidedTutorialStep('cut')
+    }
+  }
+
   const handleChangeCuts = (cuts: number): void => {
+    if (guidedTutorialStep !== null && cuts !== 2) {
+      return
+    }
+
     setCurrentCuts(cuts)
     setInteractionMode('cut')
     setResult(idleResult)
@@ -248,6 +302,20 @@ function App() {
       cutCakePieces(currentPieces, cutAngles, activeCake.toppings, nextBatch, activeCake),
     )
     setResult(idleResult)
+    if (guidedTutorialStep === 'cut') {
+      setGuidedTutorialStep('move-mode')
+    }
+  }
+
+  const handleChangeInteractionMode = (mode: InteractionMode): void => {
+    if (guidedTutorialStep === 'move-mode' && mode !== 'move') {
+      return
+    }
+
+    setInteractionMode(mode)
+    if (guidedTutorialStep === 'move-mode' && mode === 'move') {
+      setGuidedTutorialStep('move-piece')
+    }
   }
 
   const handleCarryPieceChange = (
@@ -317,6 +385,9 @@ function App() {
 
       return [...currentPieces, piece]
     })
+    if (guidedTutorialStep === 'move-piece') {
+      setGuidedTutorialStep('serve')
+    }
   }
 
   const handleReturnPieceToBoard = (piece: CakePieceModel): void => {
@@ -347,7 +418,9 @@ function App() {
         title: 'ケーキの種類が違うみたい',
         detail: `${activeOrder.customerName}さんは${getCakeById(activeOrder.cakeKind).name}を注文しています。`,
       })
-      setCombo(0)
+      if (guidedTutorialStep === null) {
+        setCombo(0)
+      }
       return
     }
 
@@ -357,7 +430,9 @@ function App() {
         title: 'まだケーキがありません',
         detail: '注文に合いそうなピースを1つ以上トレイにのせよう。',
       })
-      setCombo(0)
+      if (guidedTutorialStep === null) {
+        setCombo(0)
+      }
       return
     }
 
@@ -375,6 +450,26 @@ function App() {
           detail: `量はぴったりなので販売できます。注文通り ${formatRecipe(activeOrder.recipePieces)} で作ると、さらに+${recipeBonusReward}円です。このまま販売しますか？`,
           primaryLabel: 'このまま販売',
           secondaryLabel: '作り直す',
+        })
+        return
+      }
+
+      if (guidedTutorialStep === 'serve') {
+        const nextOrderId = selectNextOrderId(
+          unlockedCakeIds,
+          servedCount,
+          combo,
+          activeOrder.id,
+        )
+
+        setActiveOrderId(nextOrderId)
+        resetBoardState(activeCake.id)
+        setGuidedTutorialStep(null)
+        rememberTutorialCompletion()
+        setResult({
+          kind: 'success',
+          title: 'ありがとう！ぴったりだね',
+          detail: 'これで接客の練習は完了です。練習なので、売上やトロフィーには数えていません。次のお客さんから本番です！',
         })
         return
       }
@@ -400,7 +495,7 @@ function App() {
         activeOrder.id,
       )
       const recipeBonusText = recipeMatched
-        ? `注文通りの ${formatRecipe(activeOrder.recipePieces)} で作れたので、作り方ボーナスです。`
+        ? `${formatRecipe(activeOrder.recipePieces)} の作り方も、お願いしたとおりだね！`
         : ''
 
       setCombo(nextCombo)
@@ -420,16 +515,16 @@ function App() {
       if (cutToppingLabels.length === 0) {
         setResult({
           kind: 'bonus',
-          title: 'ぴったり、きれいに提供できました',
-          detail: `+${earnedMoney}円。${nextCombo}コンボ！トッピングを守れてなおよしです。${recipeBonusText}次のお客さんに進みます。${pieceBonusText}`,
+          title: 'ありがとう！きれいに切ってくれてうれしい！',
+          detail: `注文どおりの ${formatFraction(activeOrder.target)} で、トッピングもきれいなままだね。${recipeBonusText}お支払いは${earnedMoney}円。これで${nextCombo}コンボだよ！${pieceBonusText}`,
         })
         return
       }
 
       setResult({
         kind: 'success',
-        title: 'ぴったり販売できました',
-        detail: `+${earnedMoney}円。${nextCombo}コンボ！${formatFraction(total)} は ${formatFraction(activeOrder.target)} と同じ大きさです。${recipeBonusText}${cutToppingLabels.join('と')}は切れたけど、注文はばっちりです。次のお客さんに進みます。`,
+        title: 'ありがとう！ぴったりだね',
+        detail: `${formatFraction(total)} は、ほしかった ${formatFraction(activeOrder.target)} と同じ量だよ。${recipeBonusText}${cutToppingLabels.join('と')}は切れているけど、注文どおりでうれしいな！お支払いは${earnedMoney}円。これで${nextCombo}コンボだね！`,
       })
       return
     }
@@ -448,21 +543,28 @@ function App() {
             detail: `今は ${formatFraction(total)}。注文の ${formatFraction(activeOrder.target)} より大きくなっています。`,
           },
     )
-    setCombo(0)
+    if (guidedTutorialStep === null) {
+      setCombo(0)
+    }
   }
 
+  const mainClassName = [
+    'game-shell',
+    carriedPiece === null ? '' : 'is-carrying-piece',
+    guidedTutorialStep === null ? '' : `is-guided guided-step-${guidedTutorialStep}`,
+  ].filter(Boolean).join(' ')
+
   return (
-    <main className={carriedPiece === null ? 'game-shell' : 'game-shell is-carrying-piece'}>
+    <main className={mainClassName}>
       <header className="game-header">
         <div>
-          <p className="game-header__eyebrow">Fraction Cake Shop</p>
-          <h1>{stage.title}</h1>
-          <p>{stage.description}</p>
+          <h1><FuriganaText text={stage.title} /></h1>
+          <p><FuriganaText text={stage.description} /></p>
         </div>
         <dl className="score-board" aria-label="スコア">
           <div>
-            <dt>売上</dt>
-            <dd>{money.toLocaleString()}円</dd>
+            <dt><FuriganaText text="売上" /></dt>
+            <dd>{money.toLocaleString()}<FuriganaText text="円" /></dd>
           </div>
           <div>
             <dt>コンボ</dt>
@@ -512,19 +614,12 @@ function App() {
         </section>
 
         <aside className="side-panel">
+          <HelpMenu onOpenTutorial={openGuidedTutorial} />
           <ResultMessage
             result={result}
             onDismiss={() => setResult(idleResult)}
             onConfirm={() => handleServe(true)}
           />
-          <section className="hint-panel" aria-label="発見メモ">
-            <h2>発見メモ</h2>
-            <p>1/2 は 1/4 と 1/4 を合わせても作れます。</p>
-            <p>3/4 は 1/2 + 1/4、または 1/4 + 1/4 + 1/4。</p>
-            <p>補助線を選んだら、点線に沿ってケーキをスワイプ。</p>
-            <p>切り方を変えて切っても、トレイのピースは残ります。</p>
-            <p>トッピングを切らずに出せたら、なおよしです。</p>
-          </section>
           <Tray
             selectedPieces={selectedPieces}
             total={total}
@@ -537,7 +632,7 @@ function App() {
             currentCuts={currentCuts}
             interactionMode={interactionMode}
             onChangeCuts={handleChangeCuts}
-            onChangeInteractionMode={setInteractionMode}
+            onChangeInteractionMode={handleChangeInteractionMode}
             onServe={handleServe}
             onClear={clearTray}
           />
@@ -557,10 +652,15 @@ function App() {
             style={{ left: carriedPiece.x, top: carriedPiece.y }}
             aria-live="polite"
           >
-            運び中: {formatFraction(carriedPiece.fraction)}
+            <FuriganaText text="運び中" />: {formatFraction(carriedPiece.fraction)}
           </div>
         </>
       ) : null}
+      <GuidedTutorial
+        step={guidedTutorialStep}
+        onAdvance={advanceGuidedTutorial}
+        onSkip={skipGuidedTutorial}
+      />
     </main>
   )
 }

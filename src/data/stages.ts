@@ -3,8 +3,8 @@ import type { Stage } from '../types/game'
 export const stages: Stage[] = [
   {
     id: 'shop-training',
-    title: 'ケーキ屋さんの分数チャレンジ',
-    description: '切り方を変えながら、3ピース以内で注文ぴったりに組み合わせよう。',
+    title: '分ケーキ',
+    description: 'ケーキを切って、注文の分数を作ろう。',
     allowedCuts: [2, 3, 4, 6, 12],
     orderIds: [
       'half',

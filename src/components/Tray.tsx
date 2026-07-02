@@ -1,6 +1,7 @@
 import type { DragEvent } from 'react'
 import type { CakePieceModel, Fraction } from '../types/game'
 import { formatFraction, toPercent } from '../utils/fraction'
+import { FuriganaText } from './FuriganaText'
 
 interface TrayProps {
   selectedPieces: CakePieceModel[]
@@ -35,7 +36,7 @@ export function Tray({ selectedPieces, total, maxPieces, onRemovePiece, onDropPi
       <div className="tray__header">
         <h2>トレイ</h2>
         <p>
-          {selectedPieces.length}/{maxPieces} ピース 合計 {formatFraction(total)}
+          {selectedPieces.length}/{maxPieces} ピース <FuriganaText text="合計" /> {formatFraction(total)}
         </p>
       </div>
       <div className="tray__meter" aria-hidden="true">
@@ -43,7 +44,7 @@ export function Tray({ selectedPieces, total, maxPieces, onRemovePiece, onDropPi
       </div>
       <div className="tray__pieces">
         {selectedPieces.length === 0 ? (
-          <p className="tray__empty">ケーキのピースを選んでね</p>
+          <p className="tray__empty">ケーキのピースを<FuriganaText text="選んで" />ね</p>
         ) : (
           selectedPieces.map((piece) => (
             <button

@@ -20,10 +20,7 @@ export function CustomerQueue({ orders, activeOrderId }: CustomerQueueProps) {
             <span className="customer-queue__avatar" aria-hidden="true">
               <img src={customerImages[order.customerName]} alt="" />
             </span>
-            <span className="customer-queue__details">
-              <strong>{order.customerName}さん</strong>
-              <small>{index === 0 ? '対応中' : `${index + 1}番目に待っています`}</small>
-            </span>
+            <strong className="customer-queue__details">{order.customerName}さん</strong>
           </li>
         ))}
       </ol>

@@ -1,4 +1,5 @@
 import type { TrophyDefinition, TrophyProgress } from '../types/game'
+import { FuriganaText } from './FuriganaText'
 
 interface TrophyShelfProps {
   trophies: TrophyDefinition[]
@@ -31,10 +32,10 @@ export function TrophyShelf({ trophies, unlockedTrophyIds, progress }: TrophyShe
                 </span>
                 <div className="trophy-card__body">
                   <div className="trophy-card__title">
-                    <h3>{trophy.title}</h3>
-                    <small>未解放</small>
+                    <h3><FuriganaText text={trophy.title} /></h3>
+                    <small><FuriganaText text="未解放" /></small>
                   </div>
-                  <p>{trophy.description}</p>
+                  <p><FuriganaText text={trophy.description} /></p>
                   <div className="trophy-card__meter" aria-hidden="true">
                     <span style={{ width: `${progressRatio * 100}%` }} />
                   </div>
@@ -47,14 +48,14 @@ export function TrophyShelf({ trophies, unlockedTrophyIds, progress }: TrophyShe
             )
           })}
           {lockedTrophies.length === 0 ? (
-            <p className="trophy-empty">すべてのトロフィーを獲得しました</p>
+            <p className="trophy-empty"><FuriganaText text="すべてのトロフィーを獲得しました" /></p>
           ) : null}
         </div>
       </section>
 
       <section className="trophy-shelf trophy-shelf--earned" aria-label="獲得済みのトロフィー">
         <div className="trophy-shelf__header">
-          <h2>獲得済みのトロフィー</h2>
+          <h2><FuriganaText text="獲得済みのトロフィー" /></h2>
           <p>{unlockedTrophies.length}</p>
         </div>
         <div className="trophy-list trophy-list--earned">
@@ -65,10 +66,10 @@ export function TrophyShelf({ trophies, unlockedTrophyIds, progress }: TrophyShe
               </span>
               <div className="trophy-card__body">
                 <div className="trophy-card__title">
-                  <h3>{trophy.title}</h3>
-                  <small>解放済み</small>
+                  <h3><FuriganaText text={trophy.title} /></h3>
+                  <small><FuriganaText text="解放済み" /></small>
                 </div>
-                <p>{trophy.description}</p>
+                <p><FuriganaText text={trophy.description} /></p>
               </div>
             </article>
           ))}

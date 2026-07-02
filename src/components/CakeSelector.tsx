@@ -1,4 +1,5 @@
 import type { CakeDefinition, CakeKind } from '../types/game'
+import { FuriganaText } from './FuriganaText'
 
 interface CakeSelectorProps {
   cakes: CakeDefinition[]
@@ -21,7 +22,7 @@ export function CakeSelector({
     <section className="cake-selector" aria-label="販売するケーキ">
       <div className="cake-selector__header">
         <h2>ケーキ</h2>
-        <p>売上で新しいケーキを解放できます</p>
+        <p><FuriganaText text="売上で新しいケーキを解放できます" /></p>
       </div>
       <div className="cake-selector__list">
         {cakes.map((cake) => {
@@ -35,16 +36,16 @@ export function CakeSelector({
             >
               <img className="cake-option__image" src={cake.imageUrl} alt="" />
               <div>
-                <h3>{cake.name}</h3>
-                <p>{cake.description}</p>
+                <h3><FuriganaText text={cake.name} /></h3>
+                <p><FuriganaText text={cake.description} /></p>
               </div>
               {isUnlocked ? (
                 <button type="button" onClick={() => onSelectCake(cake.id)}>
-                  {cake.id === activeCakeId ? '選択中' : '選ぶ'}
+                  <FuriganaText text={cake.id === activeCakeId ? '選択中' : '選ぶ'} />
                 </button>
               ) : (
                 <button type="button" disabled={!canBuy} onClick={() => onBuyCake(cake.id)}>
-                  {cake.price.toLocaleString()}円で解放
+                  {cake.price.toLocaleString()}<FuriganaText text="円で解放" />
                 </button>
               )}
             </article>
