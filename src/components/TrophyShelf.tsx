@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { TrophyDefinition, TrophyProgress } from '../types/game'
 import { FuriganaText } from './FuriganaText'
 
@@ -8,6 +9,7 @@ interface TrophyShelfProps {
 }
 
 export function TrophyShelf({ trophies, unlockedTrophyIds, progress }: TrophyShelfProps) {
+  const [isEarnedListOpen, setIsEarnedListOpen] = useState(false)
   const lockedTrophies = trophies.filter((trophy) => !unlockedTrophyIds.includes(trophy.id))
   const unlockedTrophies = trophies.filter((trophy) => unlockedTrophyIds.includes(trophy.id))
 
@@ -53,31 +55,53 @@ export function TrophyShelf({ trophies, unlockedTrophyIds, progress }: TrophyShe
         </div>
       </section>
 
-      <section className="trophy-shelf trophy-shelf--earned" aria-label="獲得済みのトロフィー">
-        <div className="trophy-shelf__header">
-          <h2><FuriganaText text="獲得済みのトロフィー" /></h2>
-          <p>{unlockedTrophies.length}</p>
+      <button
+        type="button"
+        className="trophy-earned-button"
+        onClick={() => setIsEarnedListOpen(true)}
+        aria-haspopup="dialog"
+        aria-label="獲得済みのトロフィーを確認"
+      >
+        <span className="trophy-earned-button__icon" aria-hidden="true">★</span>
+        <span><FuriganaText text="獲得済み" /></span>
+        <strong>{unlockedTrophies.length}</strong>
+      </button>
+
+      {isEarnedListOpen ? (
+        <div className="help-overlay" role="dialog" aria-modal="true" aria-labelledby="earned-trophy-title">
+          <section className="help-dialog trophy-dialog">
+            <button
+              type="button"
+              className="help-dialog__close"
+              aria-label="閉じる"
+              onClick={() => setIsEarnedListOpen(false)}
+            >
+              ×
+            </button>
+            <div className="trophy-shelf__header">
+              <h2 id="earned-trophy-title"><FuriganaText text="獲得済みのトロフィー" /></h2>
+              <p>{unlockedTrophies.length}/{trophies.length}</p>
+            </div>
+            <div className="trophy-list trophy-list--earned trophy-dialog__list">
+              {unlockedTrophies.map((trophy) => (
+                <article key={trophy.id} className="trophy-card is-unlocked">
+                  <span className="trophy-card__icon" aria-hidden="true">★</span>
+                  <div className="trophy-card__body">
+                    <div className="trophy-card__title">
+                      <h3><FuriganaText text={trophy.title} /></h3>
+                      <small><FuriganaText text="解放済み" /></small>
+                    </div>
+                    <p><FuriganaText text={trophy.description} /></p>
+                  </div>
+                </article>
+              ))}
+              {unlockedTrophies.length === 0 ? (
+                <p className="trophy-empty">まだありません</p>
+              ) : null}
+            </div>
+          </section>
         </div>
-        <div className="trophy-list trophy-list--earned">
-          {unlockedTrophies.map((trophy) => (
-            <article key={trophy.id} className="trophy-card is-unlocked">
-              <span className="trophy-card__icon" aria-hidden="true">
-                ★
-              </span>
-              <div className="trophy-card__body">
-                <div className="trophy-card__title">
-                  <h3><FuriganaText text={trophy.title} /></h3>
-                  <small><FuriganaText text="解放済み" /></small>
-                </div>
-                <p><FuriganaText text={trophy.description} /></p>
-              </div>
-            </article>
-          ))}
-          {unlockedTrophies.length === 0 ? (
-            <p className="trophy-empty">まだありません</p>
-          ) : null}
-        </div>
-      </section>
+      ) : null}
     </div>
   )
 }

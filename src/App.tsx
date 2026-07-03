@@ -561,16 +561,6 @@ function App() {
           <h1><FuriganaText text={stage.title} /></h1>
           <p><FuriganaText text={stage.description} /></p>
         </div>
-        <dl className="score-board" aria-label="スコア">
-          <div>
-            <dt><FuriganaText text="売上" /></dt>
-            <dd>{money.toLocaleString()}<FuriganaText text="円" /></dd>
-          </div>
-          <div>
-            <dt>コンボ</dt>
-            <dd>{combo}</dd>
-          </div>
-        </dl>
       </header>
 
       <div className="game-layout">
@@ -614,6 +604,16 @@ function App() {
         </section>
 
         <aside className="side-panel">
+          <dl className="score-board" aria-label="スコア">
+            <div>
+              <dt><FuriganaText text="売上" /></dt>
+              <dd>{money.toLocaleString()}<FuriganaText text="円" /></dd>
+            </div>
+            <div>
+              <dt>コンボ</dt>
+              <dd>{combo}</dd>
+            </div>
+          </dl>
           <HelpMenu onOpenTutorial={openGuidedTutorial} />
           <ResultMessage
             result={result}

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { cakeImages, feedbackImages, toolImages } from '../data/assets'
 import { FuriganaText } from './FuriganaText'
 
 type HelpView = 'guide' | 'hint'
@@ -26,7 +27,7 @@ export function HelpMenu({ onOpenTutorial }: HelpMenuProps) {
 
       {openView !== null ? (
         <div className="help-overlay" role="dialog" aria-modal="true" aria-labelledby="help-title">
-          <section className="help-dialog">
+          <section className={`help-dialog${openView === 'guide' ? ' help-dialog--guide' : ''}`}>
             <button
               type="button"
               className="help-dialog__close"
@@ -39,11 +40,35 @@ export function HelpMenu({ onOpenTutorial }: HelpMenuProps) {
               <FuriganaText text={openView === 'guide' ? '操作ガイド' : 'ヒント'} />
             </h2>
             {openView === 'guide' ? (
-              <ol>
-                <li><FuriganaText text="包丁を選び、点線にそってケーキを切る。" /></li>
-                <li><FuriganaText text="トングに切りかえて、ピースをトレイへ移す。" /></li>
-                <li><FuriganaText text="合計をたしかめて、販売する。" /></li>
-              </ol>
+              <div className="help-guide">
+                <article className="help-guide__step">
+                  <div className="help-guide__visual help-guide__visual--cut" aria-hidden="true">
+                    <img src={cakeImages.shortcake} alt="" />
+                    <img src={toolImages.cut} alt="" />
+                    <span />
+                  </div>
+                  <strong>1. <FuriganaText text="切る" /></strong>
+                  <p><FuriganaText text="包丁を選び、点線にそってケーキを切る。" /></p>
+                </article>
+                <article className="help-guide__step">
+                  <div className="help-guide__visual help-guide__visual--move" aria-hidden="true">
+                    <img src={toolImages.move} alt="" />
+                    <span>1/2</span>
+                    <b>→</b>
+                    <div>トレイ</div>
+                  </div>
+                  <strong>2. <FuriganaText text="運ぶ" /></strong>
+                  <p><FuriganaText text="トングに切りかえて、ピースをトレイへ移す。" /></p>
+                </article>
+                <article className="help-guide__step">
+                  <div className="help-guide__visual help-guide__visual--serve" aria-hidden="true">
+                    <img src={feedbackImages.happy} alt="" />
+                    <div><span>1/2</span><b><FuriganaText text="販売" /></b></div>
+                  </div>
+                  <strong>3. <FuriganaText text="販売する" /></strong>
+                  <p><FuriganaText text="合計をたしかめて、お客さんに販売する。" /></p>
+                </article>
+              </div>
             ) : (
               <div className="help-dialog__hints">
                 <p>1/2 は 1/4 + 1/4 でも作れます。</p>
