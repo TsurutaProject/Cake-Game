@@ -1,5 +1,20 @@
-import type { CakeDefinition } from '../types/game'
+import type { CakeDefinition, CakeKind, Topping } from '../types/game'
 import { cakeImages } from './assets'
+
+const toppingAngleLayouts: Record<CakeKind, number[][]> = {
+  shortcake: [
+    [90, 30, 240],
+    [0, 150, 270],
+    [120, 210, 330],
+    [330, 60, 180],
+  ],
+  chocolate: [
+    [90, 120, 0],
+    [30, 150, 270],
+    [60, 240, 330],
+    [120, 0, 240],
+  ],
+}
 
 export const cakes: CakeDefinition[] = [
   {
@@ -18,21 +33,21 @@ export const cakes: CakeDefinition[] = [
         id: 'short-strawberry-top',
         kind: 'strawberry',
         label: 'イチゴ',
-        angle: 88,
+        angle: 90,
         radius: 66,
       },
       {
         id: 'short-banana-right',
         kind: 'banana',
         label: 'バナナ',
-        angle: 54,
+        angle: 30,
         radius: 82,
       },
       {
         id: 'short-cream-left',
         kind: 'cream',
         label: 'クリーム',
-        angle: 238,
+        angle: 240,
         radius: 70,
       },
     ],
@@ -76,3 +91,19 @@ export const cakes: CakeDefinition[] = [
 
 export const getCakeById = (cakeId: CakeDefinition['id']): CakeDefinition =>
   cakes.find((cake) => cake.id === cakeId) ?? cakes[0]
+
+export const getToppingLayoutCount = (cakeId: CakeKind): number =>
+  toppingAngleLayouts[cakeId].length
+
+export const getCakeToppings = (
+  cake: CakeDefinition,
+  layoutIndex: number,
+): Topping[] => {
+  const layouts = toppingAngleLayouts[cake.id]
+  const layout = layouts[((layoutIndex % layouts.length) + layouts.length) % layouts.length]
+
+  return cake.toppings.map((topping, index) => ({
+    ...topping,
+    angle: layout[index] ?? topping.angle,
+  }))
+}

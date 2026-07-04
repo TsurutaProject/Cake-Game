@@ -69,6 +69,12 @@ export type TrophyMetric =
   | 'cleanServes'
   | 'recipeServes'
   | 'unlockedCakeCount'
+  | 'twelfthPieceServes'
+  | 'halfRecipeVariations'
+  | 'threeQuarterRecipeVariations'
+  | 'threePieceServes'
+  | 'distinctFractionsServed'
+  | 'distinctCutDenominators'
 
 export interface TrophyDefinition {
   id: string
@@ -90,4 +96,7 @@ export interface ResultState {
   detail: string
   primaryLabel?: string
   secondaryLabel?: string
+  combo?: number
+  earnedMoney?: number
+  highlights?: string[]
 }

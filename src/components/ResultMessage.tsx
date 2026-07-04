@@ -36,7 +36,24 @@ export function ResultMessage({ result, onDismiss, onConfirm }: ResultMessagePro
             <img src={feedbackImages.speechBubble} alt="" aria-hidden="true" />
             <div className="result-message__content">
               <strong id="result-title"><FuriganaText text={result.title} /></strong>
-              <span><FuriganaText text={result.detail} /></span>
+              <div className="result-message__summary">
+                <span><FuriganaText text={result.detail} /></span>
+                {result.earnedMoney !== undefined || result.combo !== undefined ? (
+                  <div className="result-reward" aria-label="今回の報酬">
+                    {result.earnedMoney !== undefined ? (
+                      <strong>+{result.earnedMoney.toLocaleString()}<FuriganaText text="円" /></strong>
+                    ) : null}
+                    {result.combo !== undefined ? (
+                      <b>{result.combo} COMBO</b>
+                    ) : null}
+                  </div>
+                ) : null}
+                {result.highlights?.map((highlight) => (
+                  <p key={highlight} className="result-highlight">
+                    <FuriganaText text={highlight} />
+                  </p>
+                ))}
+              </div>
               <div className="result-message__actions">
                 {isWarning ? (
                   <button type="button" className="button button--secondary" onClick={onDismiss}>

@@ -10,7 +10,12 @@ import { OrderBubble } from './components/OrderBubble'
 import { ResultMessage } from './components/ResultMessage'
 import { Tray } from './components/Tray'
 import { TrophyShelf } from './components/TrophyShelf'
-import { cakes, getCakeById } from './data/cakes'
+import {
+  cakes,
+  getCakeById,
+  getCakeToppings,
+  getToppingLayoutCount,
+} from './data/cakes'
 import { orders } from './data/orders'
 import { stages } from './data/stages'
 import { trophies } from './data/trophies'
@@ -174,6 +179,22 @@ const matchesRecipe = (pieces: CakePieceModel[], recipePieces: Order['recipePiec
   return pieceFractions.every((fraction, index) => fraction === recipeFractions[index])
 }
 
+const getNextToppingLayoutIndex = (cakeId: CakeKind, currentIndex: number): number => {
+  const layoutCount = getToppingLayoutCount(cakeId)
+
+  if (layoutCount <= 1) {
+    return 0
+  }
+
+  return (currentIndex + 1 + Math.floor(Math.random() * (layoutCount - 1))) % layoutCount
+}
+
+const addUniqueValue = <Value extends string | number>(values: Value[], value: Value): Value[] =>
+  values.includes(value) ? values : [...values, value]
+
+const getPieceCombinationKey = (pieces: CakePieceModel[]): string =>
+  pieces.map((piece) => formatFraction(piece.fraction)).sort().join('+')
+
 const getUnlockedTrophyIds = (progress: TrophyProgress): string[] =>
   trophies
     .filter((trophy) => progress[trophy.metric] >= trophy.target)
@@ -191,7 +212,11 @@ function App() {
   const [unlockedCakeIds, setUnlockedCakeIds] = useState<CakeKind[]>(['shortcake'])
   const [currentCuts, setCurrentCuts] = useState(stage.allowedCuts[0])
   const [interactionMode, setInteractionMode] = useState<InteractionMode>('cut')
-  const [activeCuts, setActiveCuts] = useState<number | null>(null)
+  const [toppingLayoutIndex, setToppingLayoutIndex] = useState(() =>
+    shouldShowTutorial()
+      ? 0
+      : Math.floor(Math.random() * getToppingLayoutCount('shortcake')),
+  )
   const [cutBatch, setCutBatch] = useState(0)
   const [boardPieces, setBoardPieces] = useState<CakePieceModel[]>([
     createWholeCakePiece(initialCake),
@@ -206,8 +231,21 @@ function App() {
   const [totalEarned, setTotalEarned] = useState(0)
   const [cleanServes, setCleanServes] = useState(0)
   const [recipeServes, setRecipeServes] = useState(0)
+  const [twelfthPieceServes, setTwelfthPieceServes] = useState(0)
+  const [halfRecipeSignatures, setHalfRecipeSignatures] = useState<string[]>([])
+  const [threeQuarterRecipeSignatures, setThreeQuarterRecipeSignatures] = useState<string[]>([])
+  const [threePieceServes, setThreePieceServes] = useState(0)
+  const [servedFractionKeys, setServedFractionKeys] = useState<string[]>([])
+  const [usedCutDenominators, setUsedCutDenominators] = useState<number[]>([])
+  const [currentCutDenominators, setCurrentCutDenominators] = useState<number[]>([])
+  const [hasExplainedCombo, setHasExplainedCombo] = useState(false)
+  const [hasExplainedTrophies, setHasExplainedTrophies] = useState(false)
 
   const activeCake = getCakeById(activeCakeId)
+  const activeToppings = useMemo(
+    () => getCakeToppings(activeCake, toppingLayoutIndex),
+    [activeCake, toppingLayoutIndex],
+  )
   const activeOrder = stageOrders.find((order) => order.id === activeOrderId) ?? stageOrders[0]
   const visibleQueueOrders = useMemo(() => getVisibleQueueOrders(activeOrder), [activeOrder])
   const trophyProgress: TrophyProgress = {
@@ -217,6 +255,12 @@ function App() {
     cleanServes,
     recipeServes,
     unlockedCakeCount: unlockedCakeIds.length,
+    twelfthPieceServes,
+    halfRecipeVariations: halfRecipeSignatures.length,
+    threeQuarterRecipeVariations: threeQuarterRecipeSignatures.length,
+    threePieceServes,
+    distinctFractionsServed: servedFractionKeys.length,
+    distinctCutDenominators: usedCutDenominators.length,
   }
   const unlockedTrophyIds = getUnlockedTrophyIds(trophyProgress)
 
@@ -253,8 +297,8 @@ function App() {
     setSelectedPieces([])
     setBoardPieces([createWholeCakePiece(cake)])
     setCutMarkAngles([])
+    setCurrentCutDenominators([])
     setCarriedPiece(null)
-    setActiveCuts(null)
     setInteractionMode('cut')
   }
 
@@ -272,6 +316,7 @@ function App() {
     if (guidedTutorialStep === 'intro') {
       setActiveOrderId('half')
       setActiveCakeId('shortcake')
+      setToppingLayoutIndex(0)
       setCurrentCuts(2)
       resetCakeBoard('shortcake')
       setGuidedTutorialStep('order')
@@ -280,6 +325,17 @@ function App() {
 
     if (guidedTutorialStep === 'order') {
       setGuidedTutorialStep('cut')
+      return
+    }
+
+    if (guidedTutorialStep === 'combo') {
+      setGuidedTutorialStep('trophy')
+      return
+    }
+
+    if (guidedTutorialStep === 'trophy') {
+      setGuidedTutorialStep(null)
+      rememberTutorialCompletion()
     }
   }
 
@@ -295,11 +351,13 @@ function App() {
 
   const handleCutCake = (cuts: number, cutAngles: number[]): void => {
     const nextBatch = cutBatch + 1
-    setActiveCuts(cuts)
     setCutBatch(nextBatch)
     setCutMarkAngles((currentAngles) => mergeCutMarkAngles(currentAngles, cutAngles))
+    setCurrentCutDenominators((currentDenominators) =>
+      addUniqueValue(currentDenominators, cuts),
+    )
     setBoardPieces((currentPieces) =>
-      cutCakePieces(currentPieces, cutAngles, activeCake.toppings, nextBatch, activeCake),
+      cutCakePieces(currentPieces, cutAngles, activeToppings, nextBatch, activeCake),
     )
     setResult(idleResult)
     if (guidedTutorialStep === 'cut') {
@@ -352,7 +410,7 @@ function App() {
     setResult({
       kind: 'bonus',
       title: `${cake.name}を解放しました`,
-      detail: '今のお客さんはそのままです。次のお客さんから、このケーキを注文することがあります。',
+      detail: '今のお客さんはそのまま。次から注文に登場します。',
     })
   }
 
@@ -367,7 +425,7 @@ function App() {
       setResult({
         kind: 'try-again',
         title: 'トレイは3ピースまでです',
-        detail: 'どれか1つを外してから、別のピースを試してみよう。',
+        detail: '1つ戻してから試してね。',
       })
       return
     }
@@ -415,8 +473,8 @@ function App() {
     if (activeOrder.cakeKind !== activeCake.id) {
       setResult({
         kind: 'try-again',
-        title: 'ケーキの種類が違うみたい',
-        detail: `${activeOrder.customerName}さんは${getCakeById(activeOrder.cakeKind).name}を注文しています。`,
+        title: 'ケーキを確認してね',
+        detail: `${getCakeById(activeOrder.cakeKind).name}の注文です。`,
       })
       if (guidedTutorialStep === null) {
         setCombo(0)
@@ -427,8 +485,8 @@ function App() {
     if (selectedPieces.length === 0) {
       setResult({
         kind: 'try-again',
-        title: 'まだケーキがありません',
-        detail: '注文に合いそうなピースを1つ以上トレイにのせよう。',
+        title: 'トレイが空だよ',
+        detail: 'ピースをのせてね。',
       })
       if (guidedTutorialStep === null) {
         setCombo(0)
@@ -446,8 +504,8 @@ function App() {
       ) {
         setResult({
           kind: 'warning',
-          title: '作り方ボーナスを逃します',
-          detail: `量はぴったりなので販売できます。注文通り ${formatRecipe(activeOrder.recipePieces)} で作ると、さらに+${recipeBonusReward}円です。このまま販売しますか？`,
+          title: '量はぴったり！',
+          detail: `${formatRecipe(activeOrder.recipePieces)} なら+${recipeBonusReward}円。このまま販売しますか？`,
           primaryLabel: 'このまま販売',
           secondaryLabel: '作り直す',
         })
@@ -463,23 +521,19 @@ function App() {
         )
 
         setActiveOrderId(nextOrderId)
+        setToppingLayoutIndex((currentIndex) =>
+          getNextToppingLayoutIndex(activeCake.id, currentIndex),
+        )
         resetBoardState(activeCake.id)
-        setGuidedTutorialStep(null)
-        rememberTutorialCompletion()
-        setResult({
-          kind: 'success',
-          title: 'ありがとう！ぴったりだね',
-          detail: 'これで接客の練習は完了です。練習なので、売上やトロフィーには数えていません。次のお客さんから本番です！',
-        })
+        setGuidedTutorialStep('combo')
+        setResult(idleResult)
         return
       }
 
       const cutToppingIds = new Set(selectedPieces.flatMap((piece) => piece.cutToppingIds))
-      const cutToppingLabels = activeCake.toppings
+      const cutToppingLabels = activeToppings
         .filter((topping) => cutToppingIds.has(topping.id))
         .map((topping) => topping.label)
-      const pieceBonusText =
-        selectedPieces.length <= 2 ? '少ないピースで出せたのもすてきです。' : ''
       const nextCombo = combo + 1
       const comboReward = Math.max(0, nextCombo - 1) * 50
       const compactPieceReward = selectedPieces.length <= 2 ? compactPieceBonusReward : 0
@@ -488,43 +542,116 @@ function App() {
       const earnedMoney =
         baseReward + comboReward + compactPieceReward + toppingReward + recipeReward
       const nextServedCount = servedCount + 1
+      const nextCleanServes = cleanServes + (cutToppingLabels.length === 0 ? 1 : 0)
+      const nextRecipeServes = recipeServes + (recipeMatched ? 1 : 0)
+      const combinationKey = getPieceCombinationKey(selectedPieces)
+      const nextHalfRecipeSignatures = areFractionsEqual(
+        activeOrder.target,
+        { numerator: 1, denominator: 2 },
+      )
+        ? addUniqueValue(halfRecipeSignatures, combinationKey)
+        : halfRecipeSignatures
+      const nextThreeQuarterRecipeSignatures = areFractionsEqual(
+        activeOrder.target,
+        { numerator: 3, denominator: 4 },
+      )
+        ? addUniqueValue(threeQuarterRecipeSignatures, combinationKey)
+        : threeQuarterRecipeSignatures
+      const nextTwelfthPieceServes = twelfthPieceServes + (
+        selectedPieces.some((piece) =>
+          areFractionsEqual(piece.fraction, { numerator: 1, denominator: 12 }),
+        ) ? 1 : 0
+      )
+      const nextThreePieceServes = threePieceServes + (selectedPieces.length === 3 ? 1 : 0)
+      const nextServedFractionKeys = addUniqueValue(
+        servedFractionKeys,
+        formatFraction(activeOrder.target),
+      )
+      const nextUsedCutDenominators = currentCutDenominators.reduce<number[]>(
+        (denominators, denominator) => addUniqueValue(denominators, denominator),
+        usedCutDenominators,
+      )
       const nextOrderId = selectNextOrderId(
         unlockedCakeIds,
         nextServedCount,
         nextCombo,
         activeOrder.id,
       )
-      const recipeBonusText = recipeMatched
-        ? `${formatRecipe(activeOrder.recipePieces)} の作り方も、お願いしたとおりだね！`
-        : ''
+      const nextProgress: TrophyProgress = {
+        servedCount: nextServedCount,
+        bestCombo: Math.max(bestCombo, nextCombo),
+        totalEarned: totalEarned + earnedMoney,
+        cleanServes: nextCleanServes,
+        recipeServes: nextRecipeServes,
+        unlockedCakeCount: unlockedCakeIds.length,
+        twelfthPieceServes: nextTwelfthPieceServes,
+        halfRecipeVariations: nextHalfRecipeSignatures.length,
+        threeQuarterRecipeVariations: nextThreeQuarterRecipeSignatures.length,
+        threePieceServes: nextThreePieceServes,
+        distinctFractionsServed: nextServedFractionKeys.length,
+        distinctCutDenominators: nextUsedCutDenominators.length,
+      }
+      const currentUnlockedTrophyIds = new Set(unlockedTrophyIds)
+      const nextUnlockedTrophyIds = new Set(getUnlockedTrophyIds(nextProgress))
+      const newlyUnlockedTrophies = trophies.filter(
+        (trophy) =>
+          nextUnlockedTrophyIds.has(trophy.id) &&
+          !currentUnlockedTrophyIds.has(trophy.id),
+      )
+      const resultHighlights: string[] = []
+
+      if (!hasExplainedCombo) {
+        resultHighlights.push('コンボ開始！続けて成功すると売上ボーナスが増えるよ。')
+        setHasExplainedCombo(true)
+      }
+
+      if (!hasExplainedTrophies && newlyUnlockedTrophies.length > 0) {
+        resultHighlights.push(
+          `トロフィーを${newlyUnlockedTrophies.length}個獲得！左の「獲得済み」で見られるよ。`,
+        )
+        setHasExplainedTrophies(true)
+      }
 
       setCombo(nextCombo)
       setBestCombo((currentBestCombo) => Math.max(currentBestCombo, nextCombo))
       setMoney((currentMoney) => currentMoney + earnedMoney)
       setTotalEarned((currentTotalEarned) => currentTotalEarned + earnedMoney)
       setServedCount(nextServedCount)
-      setCleanServes((currentCleanServes) =>
-        cutToppingLabels.length === 0 ? currentCleanServes + 1 : currentCleanServes,
-      )
-      setRecipeServes((currentRecipeServes) =>
-        recipeMatched ? currentRecipeServes + 1 : currentRecipeServes,
-      )
+      setCleanServes(nextCleanServes)
+      setRecipeServes(nextRecipeServes)
+      setTwelfthPieceServes(nextTwelfthPieceServes)
+      setHalfRecipeSignatures(nextHalfRecipeSignatures)
+      setThreeQuarterRecipeSignatures(nextThreeQuarterRecipeSignatures)
+      setThreePieceServes(nextThreePieceServes)
+      setServedFractionKeys(nextServedFractionKeys)
+      setUsedCutDenominators(nextUsedCutDenominators)
       setActiveOrderId(nextOrderId)
+      setToppingLayoutIndex((currentIndex) =>
+        getNextToppingLayoutIndex(activeCake.id, currentIndex),
+      )
       resetBoardState(activeCake.id)
 
       if (cutToppingLabels.length === 0) {
         setResult({
           kind: 'bonus',
-          title: 'ありがとう！きれいに切ってくれてうれしい！',
-          detail: `注文どおりの ${formatFraction(activeOrder.target)} で、トッピングもきれいなままだね。${recipeBonusText}お支払いは${earnedMoney}円。これで${nextCombo}コンボだよ！${pieceBonusText}`,
+          title: 'ありがとう！',
+          detail: recipeMatched ? 'お願いどおりの作り方だね！' : 'きれいに切れているね！',
+          earnedMoney,
+          combo: nextCombo,
+          highlights: resultHighlights,
+          primaryLabel: '次へ',
         })
         return
       }
 
       setResult({
         kind: 'success',
-        title: 'ありがとう！ぴったりだね',
-        detail: `${formatFraction(total)} は、ほしかった ${formatFraction(activeOrder.target)} と同じ量だよ。${recipeBonusText}${cutToppingLabels.join('と')}は切れているけど、注文どおりでうれしいな！お支払いは${earnedMoney}円。これで${nextCombo}コンボだね！`,
+        title: 'ありがとう！',
+        detail: 'ぴったりの量だね。',
+        earnedMoney,
+        combo: nextCombo,
+        highlights: resultHighlights,
+        primaryLabel: '次へ',
       })
       return
     }
@@ -534,13 +661,13 @@ function App() {
       comparison < 0
         ? {
             kind: 'try-again',
-            title: 'もう少し必要みたい',
-            detail: `今は ${formatFraction(total)}。あと少し足すと注文の ${formatFraction(activeOrder.target)} に近づきます。`,
+            title: 'もう少しほしいな',
+            detail: `今 ${formatFraction(total)} ／ 注文 ${formatFraction(activeOrder.target)}`,
           }
         : {
             kind: 'try-again',
-            title: 'ちょっと多いかも',
-            detail: `今は ${formatFraction(total)}。注文の ${formatFraction(activeOrder.target)} より大きくなっています。`,
+            title: '少し多いみたい',
+            detail: `今 ${formatFraction(total)} ／ 注文 ${formatFraction(activeOrder.target)}`,
           },
     )
     if (guidedTutorialStep === null) {
@@ -587,16 +714,16 @@ function App() {
             onBuyCake={handleBuyCake}
           />
           <CakeBoard
+            key={`${activeOrder.id}-${activeCake.id}-${toppingLayoutIndex}`}
             pieces={boardPieces}
             cake={activeCake}
-            toppings={activeCake.toppings}
+            toppings={activeToppings}
             cutToppingIds={cutToppingIds}
             cutMarkAngles={cutMarkAngles}
             isTrayFull={selectedPieces.length >= maxTrayPieces}
             isCarryingPiece={carriedPiece !== null}
             interactionMode={interactionMode}
             currentCuts={currentCuts}
-            activeCuts={activeCuts}
             onCutCake={handleCutCake}
             onMovePieceToTray={handleMovePieceToTray}
             onCarryPieceChange={handleCarryPieceChange}
@@ -605,13 +732,21 @@ function App() {
 
         <aside className="side-panel">
           <dl className="score-board" aria-label="スコア">
-            <div>
+            <div className="score-card score-card--sales">
               <dt><FuriganaText text="売上" /></dt>
               <dd>{money.toLocaleString()}<FuriganaText text="円" /></dd>
             </div>
-            <div>
+            <div className={`score-card score-card--combo${combo > 0 ? ' is-active' : ''}${combo >= 5 ? ' is-hot' : ''}`}>
               <dt>コンボ</dt>
-              <dd>{combo}</dd>
+              <dd key={combo} className="combo-value">
+                <span>{combo}</span>
+                <small>COMBO</small>
+              </dd>
+              <span className="combo-candles" aria-hidden="true">
+                {Array.from({ length: Math.min(combo, 5) }, (_, index) => (
+                  <i key={index} />
+                ))}
+              </span>
             </div>
           </dl>
           <HelpMenu onOpenTutorial={openGuidedTutorial} />

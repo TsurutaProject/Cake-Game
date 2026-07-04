@@ -18,7 +18,6 @@ interface CakeBoardProps {
   isCarryingPiece: boolean
   interactionMode: InteractionMode
   currentCuts: number
-  activeCuts: number | null
   onCutCake: (cuts: number, cutAngles: number[]) => void
   onMovePieceToTray: (piece: CakePieceModel) => void
   onCarryPieceChange: (
@@ -168,14 +167,13 @@ export function CakeBoard({
   isCarryingPiece,
   interactionMode,
   currentCuts,
-  activeCuts,
   onCutCake,
   onMovePieceToTray,
   onCarryPieceChange,
 }: CakeBoardProps) {
   const [swipeStart, setSwipeStart] = useState<BoardPoint | null>(null)
   const [swipeEnd, setSwipeEnd] = useState<BoardPoint | null>(null)
-  const [cutNotice, setCutNotice] = useState('点線に沿ってケーキをスワイプすると切れます。')
+  const [cutNotice, setCutNotice] = useState('点線に沿って切ろう。')
   const [toolCursorPosition, setToolCursorPosition] = useState<ToolCursorPosition | null>(null)
   const shouldSuppressNextClick = useRef(false)
   const pendingCutAngles = getPendingCutAngles(pieces)
@@ -248,16 +246,16 @@ export function CakeBoard({
       )
 
       if (validCutAngles.length === 0) {
-        setCutNotice('そこにはケーキがありません。ケーキがある場所を切ってみよう。')
+        setCutNotice('そこにはケーキがありません。')
         return
       }
 
       onCutCake(currentCuts, validCutAngles)
-      setCutNotice(`${currentCuts}等分の線でスパッと切れました。ピースをトレイへ運ぼう。`)
+      setCutNotice(`最後は${currentCuts}等分で切りました。`)
       return
     }
 
-    setCutNotice('もう少し点線に沿って、ケーキのまんなかを通るようにスワイプしてみよう。')
+    setCutNotice('点線に沿って切ってみよう。')
   }
 
   const handleClickCapture = (event: MouseEvent<SVGSVGElement>): void => {
@@ -382,9 +380,7 @@ export function CakeBoard({
         ) : null}
       </div>
       <p className="cake-board__notice">
-        <FuriganaText
-          text={`${activeCuts === null ? 'まるごとのケーキです。' : `最後は${activeCuts}等分の線で切りました。`} ${cutNotice}`}
-        />
+        <FuriganaText text={cutNotice} />
       </p>
     </section>
   )

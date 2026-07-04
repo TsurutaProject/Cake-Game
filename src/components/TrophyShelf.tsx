@@ -22,6 +22,9 @@ export function TrophyShelf({ trophies, unlockedTrophyIds, progress }: TrophyShe
             {unlockedTrophyIds.length}/{trophies.length}
           </p>
         </div>
+        <p className="trophy-shelf__intro">
+          ミッションを<FuriganaText text="達成" />するとトロフィーが<FuriganaText text="増えます" />。
+        </p>
         <div className="trophy-list">
           {lockedTrophies.map((trophy) => {
             const currentValue = progress[trophy.metric]
