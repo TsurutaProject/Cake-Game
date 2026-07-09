@@ -27,6 +27,7 @@ import type {
   InteractionMode,
   Order,
   ResultState,
+  TrophyDefinition,
   TrophyProgress,
 } from './types/game'
 import { createWholeCakePiece, cutCakePieces, normalizeAngle } from './utils/cakeGeometry'
@@ -74,6 +75,11 @@ interface CarriedPieceState {
   fraction: Fraction
   x: number
   y: number
+}
+
+interface TrophyToast {
+  id: string
+  trophy: TrophyDefinition
 }
 
 const getVisibleQueueOrders = (activeOrder: Order): Order[] => {
@@ -238,6 +244,7 @@ function App() {
   const [servedFractionKeys, setServedFractionKeys] = useState<string[]>([])
   const [usedCutDenominators, setUsedCutDenominators] = useState<number[]>([])
   const [currentCutDenominators, setCurrentCutDenominators] = useState<number[]>([])
+  const [trophyToasts, setTrophyToasts] = useState<TrophyToast[]>([])
   const [hasExplainedCombo, setHasExplainedCombo] = useState(false)
   const [hasExplainedTrophies, setHasExplainedTrophies] = useState(false)
 
@@ -263,6 +270,32 @@ function App() {
     distinctCutDenominators: usedCutDenominators.length,
   }
   const unlockedTrophyIds = getUnlockedTrophyIds(trophyProgress)
+
+  const showTrophyToasts = (unlockedTrophies: TrophyDefinition[]): void => {
+    if (unlockedTrophies.length === 0) {
+      return
+    }
+
+    const unlockedAt = Date.now()
+
+    setTrophyToasts((currentToasts) => [
+      ...currentToasts,
+      ...unlockedTrophies.map((trophy) => ({
+        id: `${unlockedAt}-${trophy.id}`,
+        trophy,
+      })),
+    ])
+
+    unlockedTrophies.forEach((trophy, index) => {
+      const toastId = `${unlockedAt}-${trophy.id}`
+
+      window.setTimeout(() => {
+        setTrophyToasts((currentToasts) =>
+          currentToasts.filter((toast) => toast.id !== toastId),
+        )
+      }, 4600 + index * 180)
+    })
+  }
 
   const rememberTutorialCompletion = (): void => {
     try {
@@ -404,13 +437,27 @@ function App() {
     }
 
     const nextUnlockedCakeIds = [...unlockedCakeIds, cakeId]
+    const nextProgress: TrophyProgress = {
+      ...trophyProgress,
+      unlockedCakeCount: nextUnlockedCakeIds.length,
+    }
+    const currentUnlockedTrophyIds = new Set(unlockedTrophyIds)
+    const nextUnlockedTrophyIds = new Set(getUnlockedTrophyIds(nextProgress))
+    const newlyUnlockedTrophies = trophies.filter(
+      (trophy) =>
+        nextUnlockedTrophyIds.has(trophy.id) &&
+        !currentUnlockedTrophyIds.has(trophy.id),
+    )
 
     setMoney((currentMoney) => currentMoney - cake.price)
     setUnlockedCakeIds(nextUnlockedCakeIds)
+    showTrophyToasts(newlyUnlockedTrophies)
     setResult({
       kind: 'bonus',
       title: `${cake.name}を解放しました`,
-      detail: '今のお客さんはそのまま。次から注文に登場します。',
+      detail: newlyUnlockedTrophies.length > 0
+        ? 'トロフィーも獲得しました。次から注文に登場します。'
+        : '今のお客さんはそのまま。次から注文に登場します。',
     })
   }
 
@@ -612,6 +659,10 @@ function App() {
         setHasExplainedTrophies(true)
       }
 
+      if (newlyUnlockedTrophies.length > 0) {
+        showTrophyToasts(newlyUnlockedTrophies)
+      }
+
       setCombo(nextCombo)
       setBestCombo((currentBestCombo) => Math.max(currentBestCombo, nextCombo))
       setMoney((currentMoney) => currentMoney + earnedMoney)
@@ -791,6 +842,17 @@ function App() {
           </div>
         </>
       ) : null}
+      <div className="trophy-toast-region" aria-live="polite" aria-atomic="false">
+        {trophyToasts.map((toast) => (
+          <aside key={toast.id} className="trophy-toast">
+            <span className="trophy-toast__icon" aria-hidden="true">★</span>
+            <div>
+              <strong><FuriganaText text="トロフィー獲得" /></strong>
+              <p><FuriganaText text={toast.trophy.title} /></p>
+            </div>
+          </aside>
+        ))}
+      </div>
       <GuidedTutorial
         step={guidedTutorialStep}
         onAdvance={advanceGuidedTutorial}

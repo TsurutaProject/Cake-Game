@@ -24,7 +24,7 @@ const stepContent: Record<Exclude<GuidedTutorialStep, 'intro'>, { title: string;
   },
   cut: {
     title: 'ケーキを半分に切ろう',
-    text: '光っている点線を、ケーキの上から下までまっすぐスワイプしよう。',
+    text: '光っている点線を、ケーキの上から下までまっすぐスワイプしよう。4分の1など小さいピースは、外側から中心までの短いカットでも作れます。',
   },
   'move-mode': {
     title: 'トングに持ちかえよう',

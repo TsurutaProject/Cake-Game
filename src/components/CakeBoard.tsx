@@ -173,7 +173,7 @@ export function CakeBoard({
 }: CakeBoardProps) {
   const [swipeStart, setSwipeStart] = useState<BoardPoint | null>(null)
   const [swipeEnd, setSwipeEnd] = useState<BoardPoint | null>(null)
-  const [cutNotice, setCutNotice] = useState('点線に沿って切ろう。')
+  const [cutNotice, setCutNotice] = useState('点線に沿って切ろう。小さいピースは外側から中心まででも切れます。')
   const [toolCursorPosition, setToolCursorPosition] = useState<ToolCursorPosition | null>(null)
   const shouldSuppressNextClick = useRef(false)
   const pendingCutAngles = getPendingCutAngles(pieces)
@@ -255,7 +255,7 @@ export function CakeBoard({
       return
     }
 
-    setCutNotice('点線に沿って切ってみよう。')
+    setCutNotice('点線に沿って切ってみよう。4分の1などは外側から中心までの短いカットでも作れます。')
   }
 
   const handleClickCapture = (event: MouseEvent<SVGSVGElement>): void => {

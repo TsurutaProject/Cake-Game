@@ -48,7 +48,7 @@ export function HelpMenu({ onOpenTutorial }: HelpMenuProps) {
                     <span />
                   </div>
                   <strong>1. <FuriganaText text="切る" /></strong>
-                  <p><FuriganaText text="包丁を選び、点線にそってケーキを切る。" /></p>
+                  <p><FuriganaText text="包丁を選び、点線にそってケーキを切る。小さいピースは外側から中心まで切れば作れます。" /></p>
                 </article>
                 <article className="help-guide__step">
                   <div className="help-guide__visual help-guide__visual--move" aria-hidden="true">
@@ -71,9 +71,27 @@ export function HelpMenu({ onOpenTutorial }: HelpMenuProps) {
               </div>
             ) : (
               <div className="help-dialog__hints">
-                <p>1/2 は 1/4 + 1/4 でも作れます。</p>
-                <p>3/4 は 1/2 + 1/4 でも作れます。</p>
-                <p><FuriganaText text="トッピングを切らずに出せたらボーナスです。" /></p>
+                <article className="hint-card hint-card--cut">
+                  <div className="hint-card__visual" aria-hidden="true">
+                    <span className="hint-cake-mini">
+                      <i />
+                      <b />
+                    </span>
+                  </div>
+                  <div>
+                    <strong><FuriganaText text="小さいピースの切り方" /></strong>
+                    <p>1/4 や 1/6 は、外側から中心まで切れば作れます。ケーキ全部を切らなくてOK。</p>
+                  </div>
+                </article>
+                <article className="hint-card">
+                  <strong><FuriganaText text="組み合わせてもOK" /></strong>
+                  <p>1/2 は 1/4 + 1/4 でも作れます。</p>
+                  <p>3/4 は 1/2 + 1/4 でも作れます。</p>
+                </article>
+                <article className="hint-card">
+                  <strong><FuriganaText text="ボーナス" /></strong>
+                  <p><FuriganaText text="トッピングを切らずに出せたらボーナスです。" /></p>
+                </article>
               </div>
             )}
           </section>
