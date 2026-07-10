@@ -24,7 +24,7 @@ const stepContent: Record<Exclude<GuidedTutorialStep, 'intro'>, { title: string;
   },
   cut: {
     title: 'ケーキを半分に切ろう',
-    text: '光っている点線を、ケーキの上から下までまっすぐスワイプしよう。4分の1など小さいピースは、外側から中心までの短いカットでも作れます。',
+    text: '光っている点線を、ケーキの上から下までまっすぐスワイプしよう。4分の1など小さいピースは、外側から中心の黄色い点まで切って止めても作れます。',
   },
   'move-mode': {
     title: 'トングに持ちかえよう',
@@ -44,7 +44,7 @@ const stepContent: Record<Exclude<GuidedTutorialStep, 'intro'>, { title: string;
   },
   trophy: {
     title: 'トロフィーのしくみ',
-    text: 'ミッションを達成するとトロフィーが増えます。獲得したものは左下の「獲得済み」で確認できます。練習では増えません。',
+    text: 'ミッションを達成するとトロフィーが増えます。獲得したものは左下の「一覧」で確認できます。練習では増えません。',
   },
 }
 
@@ -55,7 +55,7 @@ const focusSelectors: Partial<Record<GuidedTutorialStep, string>> = {
   'move-piece': '.mode-button--move',
   serve: '.serve-button',
   combo: '.score-card--combo',
-  trophy: '.trophy-stack',
+  trophy: '.trophy-shelf',
 }
 
 const tutorialSteps: Exclude<GuidedTutorialStep, 'intro'>[] = [

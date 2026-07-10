@@ -56,6 +56,7 @@ const baseReward = 300
 const toppingBonusReward = 120
 const compactPieceBonusReward = 80
 const recipeBonusReward = 180
+const defaultCuts = 12
 const tutorialStorageKey = 'fraction-cake-guided-tutorial-seen-v2'
 
 const shouldShowTutorial = (): boolean => {
@@ -216,7 +217,7 @@ function App() {
   )
   const [activeCakeId, setActiveCakeId] = useState<CakeKind>('shortcake')
   const [unlockedCakeIds, setUnlockedCakeIds] = useState<CakeKind[]>(['shortcake'])
-  const [currentCuts, setCurrentCuts] = useState(stage.allowedCuts[0])
+  const [currentCuts, setCurrentCuts] = useState(() => shouldShowTutorial() ? 2 : defaultCuts)
   const [interactionMode, setInteractionMode] = useState<InteractionMode>('cut')
   const [toppingLayoutIndex, setToppingLayoutIndex] = useState(() =>
     shouldShowTutorial()
@@ -307,6 +308,7 @@ function App() {
 
   const skipGuidedTutorial = (): void => {
     setGuidedTutorialStep(null)
+    setCurrentCuts(defaultCuts)
     rememberTutorialCompletion()
   }
 
@@ -323,6 +325,10 @@ function App() {
     [boardPieces, selectedPieces],
   )
   const total = addFractions(selectedPieces.map((piece) => piece.fraction))
+  const canServeCurrentTray =
+    activeOrder.cakeKind === activeCake.id &&
+    selectedPieces.length > 0 &&
+    areFractionsEqual(total, activeOrder.target)
 
   const resetBoardState = (cakeId: CakeKind): void => {
     const cake = getCakeById(cakeId)
@@ -368,18 +374,9 @@ function App() {
 
     if (guidedTutorialStep === 'trophy') {
       setGuidedTutorialStep(null)
+      setCurrentCuts(defaultCuts)
       rememberTutorialCompletion()
     }
-  }
-
-  const handleChangeCuts = (cuts: number): void => {
-    if (guidedTutorialStep !== null && cuts !== 2) {
-      return
-    }
-
-    setCurrentCuts(cuts)
-    setInteractionMode('cut')
-    setResult(idleResult)
   }
 
   const handleCutCake = (cuts: number, cutAngles: number[]): void => {
@@ -404,6 +401,9 @@ function App() {
     }
 
     setInteractionMode(mode)
+    if (mode === 'cut' && guidedTutorialStep === null) {
+      setCurrentCuts(defaultCuts)
+    }
     if (guidedTutorialStep === 'move-mode' && mode === 'move') {
       setGuidedTutorialStep('move-piece')
     }
@@ -654,7 +654,7 @@ function App() {
 
       if (!hasExplainedTrophies && newlyUnlockedTrophies.length > 0) {
         resultHighlights.push(
-          `トロフィーを${newlyUnlockedTrophies.length}個獲得！左の「獲得済み」で見られるよ。`,
+          `トロフィーを${newlyUnlockedTrophies.length}個獲得！左の「一覧」で見られるよ。`,
         )
         setHasExplainedTrophies(true)
       }
@@ -782,6 +782,7 @@ function App() {
         </section>
 
         <aside className="side-panel">
+          <HelpMenu onOpenTutorial={openGuidedTutorial} />
           <dl className="score-board" aria-label="スコア">
             <div className="score-card score-card--sales">
               <dt><FuriganaText text="売上" /></dt>
@@ -800,7 +801,6 @@ function App() {
               </span>
             </div>
           </dl>
-          <HelpMenu onOpenTutorial={openGuidedTutorial} />
           <ResultMessage
             result={result}
             onDismiss={() => setResult(idleResult)}
@@ -814,10 +814,8 @@ function App() {
             onDropPiece={handleMovePieceToTrayById}
           />
           <GameControls
-            allowedCuts={stage.allowedCuts}
-            currentCuts={currentCuts}
             interactionMode={interactionMode}
-            onChangeCuts={handleChangeCuts}
+            canServe={canServeCurrentTray}
             onChangeInteractionMode={handleChangeInteractionMode}
             onServe={handleServe}
             onClear={clearTray}

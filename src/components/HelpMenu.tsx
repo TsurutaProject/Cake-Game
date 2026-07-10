@@ -80,13 +80,13 @@ export function HelpMenu({ onOpenTutorial }: HelpMenuProps) {
                   </div>
                   <div>
                     <strong><FuriganaText text="小さいピースの切り方" /></strong>
-                    <p>1/4 や 1/6 は、外側から中心まで切れば作れます。ケーキ全部を切らなくてOK。</p>
+                    <p><FuriganaText text="1/4 や 1/6 は、外側から中心まで切れば作れます。ケーキ全部を切らなくてOK。" /></p>
                   </div>
                 </article>
                 <article className="hint-card">
                   <strong><FuriganaText text="組み合わせてもOK" /></strong>
-                  <p>1/2 は 1/4 + 1/4 でも作れます。</p>
-                  <p>3/4 は 1/2 + 1/4 でも作れます。</p>
+                  <p><FuriganaText text="1/2 は 1/4 + 1/4 でも作れます。" /></p>
+                  <p><FuriganaText text="3/4 は 1/2 + 1/4 でも作れます。" /></p>
                 </article>
                 <article className="hint-card">
                   <strong><FuriganaText text="ボーナス" /></strong>

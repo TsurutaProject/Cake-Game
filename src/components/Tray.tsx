@@ -35,12 +35,15 @@ export function Tray({ selectedPieces, total, maxPieces, onRemovePiece, onDropPi
     >
       <div className="tray__header">
         <h2>トレイ</h2>
-        <p>
-          {selectedPieces.length}/{maxPieces} ピース <FuriganaText text="合計" /> {formatFraction(total)}
-        </p>
+        <p>{selectedPieces.length}/{maxPieces} ピース</p>
       </div>
       <div className="tray__meter" aria-hidden="true">
         <span style={{ width: `${Math.min(toPercent(total), 100)}%` }} />
+        <div className="tray__ticks">
+          {Array.from({ length: 11 }, (_, index) => (
+            <i key={index} />
+          ))}
+        </div>
       </div>
       <div className="tray__pieces">
         {selectedPieces.length === 0 ? (

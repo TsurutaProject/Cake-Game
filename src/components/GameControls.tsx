@@ -3,20 +3,16 @@ import { toolImages } from '../data/assets'
 import { FuriganaText } from './FuriganaText'
 
 interface GameControlsProps {
-  allowedCuts: number[]
-  currentCuts: number
   interactionMode: InteractionMode
-  onChangeCuts: (cuts: number) => void
+  canServe: boolean
   onChangeInteractionMode: (mode: InteractionMode) => void
   onServe: () => void
   onClear: () => void
 }
 
 export function GameControls({
-  allowedCuts,
-  currentCuts,
   interactionMode,
-  onChangeCuts,
+  canServe,
   onChangeInteractionMode,
   onServe,
   onClear,
@@ -44,26 +40,15 @@ export function GameControls({
           </button>
         </div>
       </div>
-      <div>
-        <p className="control-label"><FuriganaText text="補助線" /></p>
-        <div className="cut-selector" role="group" aria-label="補助線">
-          {allowedCuts.map((cuts) => (
-            <button
-              key={cuts}
-              type="button"
-              className={cuts === currentCuts ? 'is-active' : ''}
-              onClick={() => onChangeCuts(cuts)}
-            >
-              {cuts}<FuriganaText text="等分" />
-            </button>
-          ))}
-        </div>
-      </div>
       <div className="game-controls__actions">
-        <button type="button" className="button button--secondary" onClick={onClear}>
+        <button type="button" className="button button--danger" onClick={onClear}>
           もどす
         </button>
-        <button type="button" className="button button--primary serve-button" onClick={onServe}>
+        <button
+          type="button"
+          className={canServe ? 'button button--primary serve-button is-ready' : 'button button--primary serve-button'}
+          onClick={onServe}
+        >
           <FuriganaText text="販売する" />
         </button>
       </div>

@@ -22,7 +22,6 @@ export function CakeSelector({
     <section className="cake-selector" aria-label="販売するケーキ">
       <div className="cake-selector__header">
         <h2>ケーキ</h2>
-        <p><FuriganaText text="売上で新しいケーキを解放できます" /></p>
       </div>
       <div className="cake-selector__list">
         {cakes.map((cake) => {
