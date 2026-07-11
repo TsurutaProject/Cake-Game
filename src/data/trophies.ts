@@ -136,9 +136,9 @@ export const trophies: TrophyDefinition[] = [
   },
   {
     id: 'cut-researcher',
-    title: '切り方研究家',
-    description: '2・3・4・6・12等分をすべて使って販売する',
-    metric: 'distinctCutDenominators',
-    target: 5,
+    title: 'トッピングキラー',
+    description: '全てのトッピングを切って販売する',
+    metric: 'allToppingsCutServes',
+    target: 1,
   },
 ]

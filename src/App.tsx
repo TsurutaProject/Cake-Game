@@ -239,6 +239,7 @@ function App() {
   const [cleanServes, setCleanServes] = useState(0)
   const [recipeServes, setRecipeServes] = useState(0)
   const [twelfthPieceServes, setTwelfthPieceServes] = useState(0)
+  const [allToppingsCutServes, setAllToppingsCutServes] = useState(0)
   const [halfRecipeSignatures, setHalfRecipeSignatures] = useState<string[]>([])
   const [threeQuarterRecipeSignatures, setThreeQuarterRecipeSignatures] = useState<string[]>([])
   const [threePieceServes, setThreePieceServes] = useState(0)
@@ -264,6 +265,7 @@ function App() {
     recipeServes,
     unlockedCakeCount: unlockedCakeIds.length,
     twelfthPieceServes,
+    allToppingsCutServes,
     halfRecipeVariations: halfRecipeSignatures.length,
     threeQuarterRecipeVariations: threeQuarterRecipeSignatures.length,
     threePieceServes,
@@ -535,9 +537,6 @@ function App() {
         title: 'トレイが空だよ',
         detail: 'ピースをのせてね。',
       })
-      if (guidedTutorialStep === null) {
-        setCombo(0)
-      }
       return
     }
 
@@ -581,6 +580,7 @@ function App() {
       const cutToppingLabels = activeToppings
         .filter((topping) => cutToppingIds.has(topping.id))
         .map((topping) => topping.label)
+      const allToppingsCut = activeToppings.every((topping) => cutToppingIds.has(topping.id))
       const nextCombo = combo + 1
       const comboReward = Math.max(0, nextCombo - 1) * 50
       const compactPieceReward = selectedPieces.length <= 2 ? compactPieceBonusReward : 0
@@ -609,6 +609,7 @@ function App() {
           areFractionsEqual(piece.fraction, { numerator: 1, denominator: 12 }),
         ) ? 1 : 0
       )
+      const nextAllToppingsCutServes = allToppingsCutServes + (allToppingsCut ? 1 : 0)
       const nextThreePieceServes = threePieceServes + (selectedPieces.length === 3 ? 1 : 0)
       const nextServedFractionKeys = addUniqueValue(
         servedFractionKeys,
@@ -632,6 +633,7 @@ function App() {
         recipeServes: nextRecipeServes,
         unlockedCakeCount: unlockedCakeIds.length,
         twelfthPieceServes: nextTwelfthPieceServes,
+        allToppingsCutServes: nextAllToppingsCutServes,
         halfRecipeVariations: nextHalfRecipeSignatures.length,
         threeQuarterRecipeVariations: nextThreeQuarterRecipeSignatures.length,
         threePieceServes: nextThreePieceServes,
@@ -671,6 +673,7 @@ function App() {
       setCleanServes(nextCleanServes)
       setRecipeServes(nextRecipeServes)
       setTwelfthPieceServes(nextTwelfthPieceServes)
+      setAllToppingsCutServes(nextAllToppingsCutServes)
       setHalfRecipeSignatures(nextHalfRecipeSignatures)
       setThreeQuarterRecipeSignatures(nextThreeQuarterRecipeSignatures)
       setThreePieceServes(nextThreePieceServes)

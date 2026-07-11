@@ -70,6 +70,7 @@ export type TrophyMetric =
   | 'recipeServes'
   | 'unlockedCakeCount'
   | 'twelfthPieceServes'
+  | 'allToppingsCutServes'
   | 'halfRecipeVariations'
   | 'threeQuarterRecipeVariations'
   | 'threePieceServes'
