@@ -251,7 +251,6 @@ export function CakeBoard({
       }
 
       onCutCake(currentCuts, validCutAngles)
-      setCutNotice(`最後は${currentCuts}等分で切りました。`)
       return
     }
 
