@@ -18,6 +18,7 @@ interface CakeBoardProps {
   isCarryingPiece: boolean
   interactionMode: InteractionMode
   currentCuts: number
+  showCuttingGuide?: boolean
   onCutCake: (cuts: number, cutAngles: number[]) => void
   onMovePieceToTray: (piece: CakePieceModel) => void
   onCarryPieceChange: (
@@ -167,6 +168,7 @@ export function CakeBoard({
   isCarryingPiece,
   interactionMode,
   currentCuts,
+  showCuttingGuide = true,
   onCutCake,
   onMovePieceToTray,
   onCarryPieceChange,
@@ -346,15 +348,14 @@ export function CakeBoard({
                   x2={point.x}
                   y2={point.y}
                   className="pending-cut-line"
-                  style={{ stroke: cake.guideColor }}
                 />
                 <circle cx={point.x} cy={point.y} r="5.5" className="pending-cut-dot" />
                 <circle cx={center} cy={center} r="4.5" className="pending-cut-dot" />
               </g>
             )
           })}
-          {interactionMode === 'cut' ? (
-            <CuttingGuide cuts={currentCuts} color={cake.guideColor} />
+          {interactionMode === 'cut' && showCuttingGuide ? (
+            <CuttingGuide cuts={currentCuts} color={cake.guideColor} hiddenAngles={pendingCutAngles} />
           ) : null}
           <CakePieceLabels pieces={pieces} />
           {swipeStart !== null && swipeEnd !== null ? (

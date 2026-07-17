@@ -1,10 +1,10 @@
-import type { Fraction, Order } from '../types/game'
+import type { CakeDefinition, Fraction, Order } from '../types/game'
 import { formatFraction } from '../utils/fraction'
 import { FuriganaText } from './FuriganaText'
 
 interface OrderBubbleProps {
   order: Order
-  cakeName: string
+  cake: CakeDefinition
 }
 
 const getPiecePlan = (order: Order): Fraction[] => {
@@ -22,7 +22,7 @@ const getPiecePlan = (order: Order): Fraction[] => {
   return [order.target]
 }
 
-export function OrderBubble({ order, cakeName }: OrderBubbleProps) {
+export function OrderBubble({ order, cake }: OrderBubbleProps) {
   const piecePlan = getPiecePlan(order)
   const hasSeveralPieces = piecePlan.length > 1
 
@@ -32,8 +32,13 @@ export function OrderBubble({ order, cakeName }: OrderBubbleProps) {
         <div className="order-bubble__header">
           <p className="order-bubble__name">{order.customerName}さんの<FuriganaText text="注文" /></p>
           <p className={`order-bubble__cake order-bubble__cake--${order.cakeKind}`}>
-            <span aria-hidden="true" />
-            <FuriganaText text={cakeName} />
+            <span className="order-bubble__cake-thumb" aria-hidden="true">
+              <img src={cake.imageUrl} alt="" />
+            </span>
+            <span>
+              <small><FuriganaText text="注文ケーキ" /></small>
+              <b><FuriganaText text={cake.name} /></b>
+            </span>
           </p>
         </div>
         <p className="order-bubble__message">

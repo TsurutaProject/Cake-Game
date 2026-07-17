@@ -10,6 +10,7 @@ import { OrderBubble } from './components/OrderBubble'
 import { ResultMessage } from './components/ResultMessage'
 import { Tray } from './components/Tray'
 import { TrophyShelf } from './components/TrophyShelf'
+import { CakePiecePreview } from './components/CakePiecePreview'
 import {
   cakes,
   getCakeById,
@@ -23,7 +24,6 @@ import { toolImages } from './data/assets'
 import type {
   CakeKind,
   CakePieceModel,
-  Fraction,
   InteractionMode,
   Order,
   ResultState,
@@ -57,7 +57,7 @@ const toppingBonusReward = 120
 const compactPieceBonusReward = 80
 const recipeBonusReward = 180
 const defaultCuts = 12
-const tutorialStorageKey = 'fraction-cake-guided-tutorial-seen-v2'
+const tutorialStorageKey = 'fraction-cake-guided-tutorial-seen-v3'
 
 const shouldShowTutorial = (): boolean => {
   try {
@@ -73,7 +73,7 @@ interface DifficultyRange {
 }
 
 interface CarriedPieceState {
-  fraction: Fraction
+  piece: CakePieceModel
   x: number
   y: number
 }
@@ -365,6 +365,11 @@ function App() {
     }
 
     if (guidedTutorialStep === 'order') {
+      setGuidedTutorialStep('topping')
+      return
+    }
+
+    if (guidedTutorialStep === 'topping') {
       setGuidedTutorialStep('cut')
       return
     }
@@ -383,16 +388,19 @@ function App() {
 
   const handleCutCake = (cuts: number, cutAngles: number[]): void => {
     const nextBatch = cutBatch + 1
+    const nextBoardPieces = cutCakePieces(boardPieces, cutAngles, activeToppings, nextBatch, activeCake)
+    const hasHalfPieces = nextBoardPieces.some((piece) =>
+      areFractionsEqual(piece.fraction, { numerator: 1, denominator: 2 }),
+    )
+
     setCutBatch(nextBatch)
     setCutMarkAngles((currentAngles) => mergeCutMarkAngles(currentAngles, cutAngles))
     setCurrentCutDenominators((currentDenominators) =>
       addUniqueValue(currentDenominators, cuts),
     )
-    setBoardPieces((currentPieces) =>
-      cutCakePieces(currentPieces, cutAngles, activeToppings, nextBatch, activeCake),
-    )
+    setBoardPieces(nextBoardPieces)
     setResult(idleResult)
-    if (guidedTutorialStep === 'cut') {
+    if (guidedTutorialStep === 'cut' && hasHalfPieces) {
       setGuidedTutorialStep('move-mode')
     }
   }
@@ -419,9 +427,9 @@ function App() {
       position === null
         ? null
         : {
-            fraction: piece.fraction,
             x: position.x,
             y: position.y,
+            piece,
           },
     )
   }
@@ -758,7 +766,7 @@ function App() {
         </div>
 
         <section className="play-area">
-          <OrderBubble order={activeOrder} cakeName={getCakeById(activeOrder.cakeKind).name} />
+          <OrderBubble order={activeOrder} cake={getCakeById(activeOrder.cakeKind)} />
           <CakeSelector
             cakes={cakes}
             activeCakeId={activeCake.id}
@@ -778,6 +786,7 @@ function App() {
             isCarryingPiece={carriedPiece !== null}
             interactionMode={interactionMode}
             currentCuts={currentCuts}
+            showCuttingGuide={guidedTutorialStep !== 'topping'}
             onCutCake={handleCutCake}
             onMovePieceToTray={handleMovePieceToTray}
             onCarryPieceChange={handleCarryPieceChange}
@@ -786,6 +795,13 @@ function App() {
 
         <aside className="side-panel">
           <HelpMenu onOpenTutorial={openGuidedTutorial} />
+          <section className="goal-card" aria-label="最終目標">
+            <div>
+              <small><FuriganaText text="最終目標" /></small>
+              <strong><FuriganaText text="トロフィーを全部集めよう" /></strong>
+            </div>
+            <span>{unlockedTrophyIds.length}/{trophies.length}</span>
+          </section>
           <dl className="score-board" aria-label="スコア">
             <div className="score-card score-card--sales">
               <dt><FuriganaText text="売上" /></dt>
@@ -813,6 +829,8 @@ function App() {
             selectedPieces={selectedPieces}
             total={total}
             maxPieces={maxTrayPieces}
+            cakeImageUrl={activeCake.imageUrl}
+            toppings={activeToppings}
             onRemovePiece={handleReturnPieceToBoard}
             onDropPiece={handleMovePieceToTrayById}
           />
@@ -839,7 +857,8 @@ function App() {
             style={{ left: carriedPiece.x, top: carriedPiece.y }}
             aria-live="polite"
           >
-            <FuriganaText text="運び中" />: {formatFraction(carriedPiece.fraction)}
+            <CakePiecePreview piece={carriedPiece.piece} imageUrl={activeCake.imageUrl} toppings={activeToppings} />
+            <span><FuriganaText text="運び中" /></span>
           </div>
         </>
       ) : null}

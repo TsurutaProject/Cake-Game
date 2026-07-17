@@ -1351,6 +1351,66 @@ rt {
   text-align: center;
 }
 
+.guided-step-order .guided-coach {
+  right: 28px;
+  bottom: 92px;
+  left: auto;
+  top: auto;
+  width: min(38vw, 390px);
+  transform: none;
+}
+
+.guided-step-topping .guided-coach {
+  top: 128px;
+  right: max(24px, 10vw);
+  left: auto;
+  width: min(36vw, 380px);
+  transform: none;
+}
+
+.guided-step-cut .guided-coach {
+  top: 128px;
+  right: max(24px, 10vw);
+  left: auto;
+  width: min(36vw, 380px);
+  transform: none;
+}
+
+.guided-step-move-mode .guided-coach,
+.guided-step-serve .guided-coach {
+  top: 112px;
+  right: 28px;
+  left: auto;
+  width: min(36vw, 360px);
+  transform: none;
+}
+
+.guided-step-move-piece .guided-coach {
+  top: 120px;
+  left: 28px;
+  right: auto;
+  width: min(36vw, 360px);
+  transform: none;
+}
+
+.guided-step-combo .guided-coach {
+  bottom: 84px;
+  left: 28px;
+  right: auto;
+  top: auto;
+  width: min(36vw, 360px);
+  transform: none;
+}
+
+.guided-step-trophy .guided-coach {
+  bottom: 96px;
+  right: 28px;
+  left: auto;
+  top: auto;
+  width: min(36vw, 360px);
+  transform: none;
+}
+
 .guided-coach__header {
   display: flex;
   align-items: center;
@@ -1398,6 +1458,7 @@ rt {
 }
 
 .guided-step-order .order-bubble,
+.guided-step-topping .cake-board,
 .guided-step-cut .cake-board,
 .guided-step-move-mode .mode-button--move,
 .guided-step-move-piece .cake-board,
@@ -1435,6 +1496,23 @@ rt {
   filter: drop-shadow(0 0 7px #ffd166) drop-shadow(0 0 12px #ffd166);
 }
 
+.guided-step-topping .topping-focus-ring {
+  opacity: 1;
+  animation: guided-topping-pulse 1s ease-in-out infinite alternate;
+}
+
+.guided-step-topping .topping-layer {
+  filter: drop-shadow(0 3px 0 rgba(45, 36, 32, 0.16));
+}
+
+.guided-step-topping .topping image {
+  filter: drop-shadow(0 3px 0 rgba(45, 36, 32, 0.16));
+}
+
+.is-guided .result-overlay {
+  z-index: 76;
+}
+
 @keyframes guided-focus-pulse {
   from { outline-offset: 2px; }
   to { outline-offset: 7px; }
@@ -1444,8 +1522,14 @@ rt {
   to { stroke-dashoffset: -18; }
 }
 
+@keyframes guided-topping-pulse {
+  from { stroke-width: 4; }
+  to { stroke-width: 7; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .guided-step-order .order-bubble,
+  .guided-step-topping .cake-board,
   .guided-step-cut .cake-board,
   .guided-step-move-mode .mode-button--move,
   .guided-step-move-piece .cake-board,
@@ -1463,8 +1547,11 @@ rt {
 @media (max-width: 620px) {
   .guided-coach {
     top: 10px;
+    right: auto;
+    left: 10px;
     width: calc(100vw - 20px);
     padding: 12px 14px;
+    transform: none;
   }
 
   .guided-coach > strong {
@@ -1475,6 +1562,53 @@ rt {
     font-size: 0.9rem;
   }
 
+}
+
+@media (min-width: 621px) and (max-width: 960px) {
+  .guided-step-order .guided-coach,
+  .guided-step-topping .guided-coach,
+  .guided-step-cut .guided-coach,
+  .guided-step-move-mode .guided-coach,
+  .guided-step-move-piece .guided-coach,
+  .guided-step-serve .guided-coach,
+  .guided-step-combo .guided-coach,
+  .guided-step-trophy .guided-coach {
+    right: 16px;
+    left: auto;
+    width: min(360px, calc(100vw - 32px));
+    transform: none;
+  }
+
+  .guided-step-order .guided-coach,
+  .guided-step-combo .guided-coach {
+    top: auto;
+    bottom: 48px;
+  }
+
+  .guided-step-trophy .guided-coach {
+    top: auto;
+    right: auto;
+    bottom: 48px;
+    left: 16px;
+  }
+
+  .guided-step-move-piece .guided-coach {
+    top: 104px;
+    right: auto;
+    left: 16px;
+  }
+
+  .guided-step-topping .guided-coach {
+    top: 116px;
+    right: 16px;
+    width: min(340px, calc(100vw - 32px));
+  }
+
+  .guided-step-cut .guided-coach,
+  .guided-step-move-mode .guided-coach,
+  .guided-step-serve .guided-coach {
+    top: 104px;
+  }
 }
 
 @media (max-width: 620px) {
@@ -1557,25 +1691,50 @@ rt {
 
 .order-bubble__cake {
   display: inline-flex;
-  gap: 7px;
+  gap: 9px;
   align-items: center;
   margin: 0;
-  padding: 5px 9px;
-  border: 2px solid rgba(132, 220, 198, 0.72);
+  padding: 6px 11px 6px 7px;
+  border: 3px solid rgba(132, 220, 198, 0.82);
   border-radius: 6px;
   background: #e9fff6;
   color: #164d40;
-  font-size: 0.92rem;
   font-weight: 900;
+  box-shadow: inset 0 -2px 0 rgba(84, 188, 164, 0.16);
 }
 
-.order-bubble__cake > span {
-  width: 12px;
-  height: 12px;
+.order-bubble__cake-thumb {
+  display: grid;
+  width: 36px;
+  height: 36px;
   flex: 0 0 auto;
-  border: 3px solid #d49a63;
+  place-items: center;
+  overflow: hidden;
+  border: 2px solid #d49a63;
   border-radius: 50%;
   background: #fff4df;
+}
+
+.order-bubble__cake-thumb img {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+}
+
+.order-bubble__cake > span:last-child {
+  display: grid;
+  gap: 1px;
+}
+
+.order-bubble__cake small {
+  color: #795548;
+  font-size: 0.68rem;
+  line-height: 1;
+}
+
+.order-bubble__cake b {
+  font-size: 1rem;
+  line-height: 1.1;
 }
 
 .order-bubble__cake--chocolate {
@@ -1584,9 +1743,9 @@ rt {
   color: #5f3528;
 }
 
-.order-bubble__cake--chocolate > span {
+.order-bubble__cake--chocolate .order-bubble__cake-thumb {
   border-color: #3b2119;
-  background: #6f3f2f;
+  background: #8a543f;
 }
 
 .order-bubble__label,
@@ -1899,6 +2058,15 @@ rt {
   filter: drop-shadow(0 3px 0 rgba(45, 36, 32, 0.16));
 }
 
+.topping-focus-ring {
+  fill: rgba(255, 245, 180, 0.55);
+  opacity: 0;
+  stroke: #fff1a8;
+  stroke-width: 4;
+  filter: drop-shadow(0 0 8px rgba(255, 248, 236, 0.95)) drop-shadow(0 0 14px rgba(255, 209, 102, 0.95));
+  transition: opacity 160ms ease;
+}
+
 .topping--cut {
   opacity: 0.72;
 }
@@ -1925,27 +2093,31 @@ rt {
 }
 
 .pending-cut {
-  filter: drop-shadow(0 2px 0 rgba(45, 36, 32, 0.24));
+  filter: drop-shadow(0 1px 0 rgba(45, 36, 32, 0.14));
   pointer-events: none;
 }
 
 .pending-cut-line {
-  stroke-dasharray: 10 4;
+  stroke: #5f493f;
+  stroke-dasharray: 2 8;
   stroke-linecap: round;
-  stroke-width: 5;
+  stroke-width: 3;
+  opacity: 0.5;
   pointer-events: none;
 }
 
 .pending-cut-line--halo {
-  stroke: rgba(255, 255, 255, 0.9);
+  stroke: rgba(255, 248, 236, 0.88);
   stroke-dasharray: none;
-  stroke-width: 10;
+  stroke-width: 7;
+  opacity: 0.58;
 }
 
 .pending-cut-dot {
-  fill: #84dcc6;
+  fill: #5f493f;
   stroke: #fff8ec;
-  stroke-width: 3;
+  stroke-width: 2.5;
+  opacity: 0.72;
 }
 
 .cut-mark {
@@ -2087,6 +2259,47 @@ rt {
   box-shadow: 0 10px 20px rgba(242, 112, 89, 0.24), inset 0 -3px 0 rgba(179, 77, 49, 0.28);
 }
 
+.goal-card {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border: 2px solid rgba(242, 112, 89, 0.34);
+  border-radius: 8px;
+  background: #fff9ea;
+  box-shadow: inset 0 -2px 0 rgba(216, 170, 116, 0.16);
+}
+
+.goal-card div {
+  display: grid;
+  gap: 2px;
+}
+
+.goal-card small {
+  color: #b34d31;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.goal-card strong {
+  color: #3a3029;
+  font-size: 0.98rem;
+  line-height: 1.25;
+}
+
+.goal-card > span {
+  display: grid;
+  min-width: 58px;
+  min-height: 40px;
+  place-items: center;
+  border-radius: 6px;
+  background: #f27059;
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
 .tray,
 .hint-panel,
 .result-message {
@@ -2169,7 +2382,11 @@ rt {
 }
 
 .tray-piece {
+  display: grid;
+  min-width: 0;
   min-height: 58px;
+  place-items: center;
+  padding: 4px;
   border: 4px solid;
   border-radius: 8px;
   background: #fff;
@@ -2179,19 +2396,65 @@ rt {
   cursor: pointer;
 }
 
+.cake-piece-preview {
+  display: grid;
+  gap: 2px;
+  place-items: center;
+  min-width: 0;
+  color: #2d2420;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.cake-piece-preview svg {
+  width: 42px;
+  height: 42px;
+  overflow: visible;
+  filter: drop-shadow(0 2px 2px rgba(45, 36, 32, 0.18));
+}
+
+.cake-piece-preview path,
+.cake-piece-preview circle {
+  stroke: #fff8ec;
+  stroke-width: 8;
+}
+
+.cake-piece-preview__topping image {
+  filter: drop-shadow(0 5px 4px rgba(45, 36, 32, 0.24));
+}
+
+.cake-piece-preview__topping line {
+  stroke: #f27059;
+  stroke-width: 9;
+  stroke-linecap: round;
+  filter: drop-shadow(0 1px #fff8ec) drop-shadow(0 -1px #fff8ec);
+}
+
+.cake-piece-preview strong {
+  font-size: 0.95rem;
+}
+
 .carry-badge {
   position: fixed;
   z-index: 74;
-  padding: 8px 12px;
+  display: grid;
+  gap: 2px;
+  place-items: center;
+  padding: 8px 10px;
   border: 2px solid #2d2420;
-  border-radius: 999px;
+  border-radius: 10px;
   background: #fff8ec;
   color: #2d2420;
-  font-size: 1rem;
+  font-size: 0.82rem;
   font-weight: 900;
   pointer-events: none;
-  transform: translate(14px, -50%);
+  transform: translate(18px, -50%);
   box-shadow: 0 10px 20px rgba(45, 36, 32, 0.18);
+}
+
+.carry-badge .cake-piece-preview svg {
+  width: 58px;
+  height: 58px;
 }
 
 .result-message {

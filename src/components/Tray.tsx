@@ -1,17 +1,20 @@
 import type { DragEvent } from 'react'
-import type { CakePieceModel, Fraction } from '../types/game'
-import { formatFraction, toPercent } from '../utils/fraction'
+import type { CakePieceModel, Fraction, Topping } from '../types/game'
+import { toPercent } from '../utils/fraction'
+import { CakePiecePreview } from './CakePiecePreview'
 import { FuriganaText } from './FuriganaText'
 
 interface TrayProps {
   selectedPieces: CakePieceModel[]
   total: Fraction
   maxPieces: number
+  cakeImageUrl: string
+  toppings: Topping[]
   onRemovePiece: (piece: CakePieceModel) => void
   onDropPiece: (pieceId: string) => void
 }
 
-export function Tray({ selectedPieces, total, maxPieces, onRemovePiece, onDropPiece }: TrayProps) {
+export function Tray({ selectedPieces, total, maxPieces, cakeImageUrl, toppings, onRemovePiece, onDropPiece }: TrayProps) {
   const handleDragOver = (event: DragEvent<HTMLElement>): void => {
     event.preventDefault()
     event.dataTransfer.dropEffect = selectedPieces.length >= maxPieces ? 'none' : 'move'
@@ -57,7 +60,7 @@ export function Tray({ selectedPieces, total, maxPieces, onRemovePiece, onDropPi
               onClick={() => onRemovePiece(piece)}
               style={{ borderColor: piece.color }}
             >
-              {formatFraction(piece.fraction)}
+              <CakePiecePreview piece={piece} imageUrl={cakeImageUrl} toppings={toppings} />
             </button>
           ))
         )}

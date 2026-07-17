@@ -1,14 +1,21 @@
-import { polarToCartesian } from '../utils/cakeGeometry'
+import { normalizeAngle, polarToCartesian } from '../utils/cakeGeometry'
 
 interface CuttingGuideProps {
   cuts: number
   color: string
+  hiddenAngles?: number[]
 }
 
-export function CuttingGuide({ cuts, color }: CuttingGuideProps) {
+const getAngleDistance = (left: number, right: number): number => {
+  const difference = Math.abs(normalizeAngle(left) - normalizeAngle(right))
+  return Math.min(difference, 360 - difference)
+}
+
+export function CuttingGuide({ cuts, color, hiddenAngles = [] }: CuttingGuideProps) {
   const center = 120
   const radius = 108
   const guideAngles = Array.from({ length: cuts }, (_, index) => (360 / cuts) * index)
+    .filter((angle) => !hiddenAngles.some((hiddenAngle) => getAngleDistance(angle, hiddenAngle) < 0.001))
 
   return (
     <g className="cutting-guide" aria-hidden="true">

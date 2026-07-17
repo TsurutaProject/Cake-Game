@@ -4,6 +4,7 @@ import { FuriganaText } from './FuriganaText'
 export type GuidedTutorialStep =
   | 'intro'
   | 'order'
+  | 'topping'
   | 'cut'
   | 'move-mode'
   | 'move-piece'
@@ -20,11 +21,15 @@ interface GuidedTutorialProps {
 const stepContent: Record<Exclude<GuidedTutorialStep, 'intro'>, { title: string; text: string }> = {
   order: {
     title: 'まずは注文を見よう',
-    text: 'このお客さんは、ケーキを1/2ほしがっています。注文がわかったら次へ進もう。',
+    text: 'このお客さんは、ショートケーキを1/2ほしがっています。ケーキの種類と目標の分数を見てから作ろう。',
+  },
+  topping: {
+    title: 'トッピングも見よう',
+    text: 'イチゴ、バナナ、クリームの上を切ると、トッピングにも切れ目が入ります。トッピングを切らずに販売できるとボーナスがつきます。',
   },
   cut: {
     title: 'ケーキを半分に切ろう',
-    text: '光っている点線を、ケーキの上から下までまっすぐスワイプしよう。4分の1など小さいピースは、外側から中心の黄色い点まで切って止めても作れます。',
+    text: '半分にする時は、光っている点線をケーキの端から反対側の端までまっすぐスワイプしよう。小さいピースは、外側から中心の黄色い点までの短いカットでも作れます。',
   },
   'move-mode': {
     title: 'トングに持ちかえよう',
@@ -50,6 +55,7 @@ const stepContent: Record<Exclude<GuidedTutorialStep, 'intro'>, { title: string;
 
 const focusSelectors: Partial<Record<GuidedTutorialStep, string>> = {
   order: '.order-bubble',
+  topping: '.cake-board',
   cut: '.cake-board',
   'move-mode': '.mode-button--move',
   'move-piece': '.mode-button--move',
@@ -60,6 +66,7 @@ const focusSelectors: Partial<Record<GuidedTutorialStep, string>> = {
 
 const tutorialSteps: Exclude<GuidedTutorialStep, 'intro'>[] = [
   'order',
+  'topping',
   'cut',
   'move-mode',
   'move-piece',
@@ -117,12 +124,14 @@ export function GuidedTutorial({ step, onAdvance, onSkip }: GuidedTutorialProps)
         </div>
         <strong><FuriganaText text={content.title} /></strong>
         <p><FuriganaText text={content.text} /></p>
-        {step === 'order' || step === 'combo' || step === 'trophy' ? (
+        {step === 'order' || step === 'topping' || step === 'combo' || step === 'trophy' ? (
           <button type="button" className="button button--primary" onClick={onAdvance}>
             <FuriganaText
               text={
                 step === 'order'
                   ? '注文がわかった'
+                  : step === 'topping'
+                    ? 'トッピングがわかった'
                   : step === 'combo'
                     ? 'コンボがわかった'
                     : '本番へ進む'

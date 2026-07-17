@@ -43,6 +43,12 @@ export function ToppingLayer({ toppings, cutToppingIds, pieces }: ToppingLayerPr
             className={isCut ? 'topping topping--cut' : 'topping'}
             aria-label={topping.label}
           >
+            <circle
+              cx={point.x}
+              cy={point.y}
+              r={size / 2 + 8}
+              className="topping-focus-ring"
+            />
             <image
               href={toppingImages[topping.kind]}
               x={point.x - size / 2}
