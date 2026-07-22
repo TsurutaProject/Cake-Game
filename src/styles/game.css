@@ -1328,6 +1328,15 @@ rt {
   margin-top: 22px;
 }
 
+.guided-intro__actions .button--primary {
+  min-height: 58px;
+  background: #f27059;
+  color: #fff;
+  font-size: 1.08rem;
+  box-shadow: 0 12px 22px rgba(242, 112, 89, 0.3), inset 0 -4px 0 rgba(179, 77, 49, 0.28);
+  animation: guided-cta-pulse 1s ease-in-out infinite alternate;
+}
+
 .guided-shade {
   position: fixed;
   inset: 0;
@@ -1338,76 +1347,87 @@ rt {
 
 .guided-coach {
   position: fixed;
-  top: 18px;
-  left: 50%;
+  top: var(--guided-coach-top, 18px);
+  right: auto;
+  bottom: auto;
+  left: var(--guided-coach-left, calc(50vw - 260px));
   z-index: 80;
-  width: min(92vw, 520px);
+  width: min(calc(100vw - 32px), var(--guided-coach-width, 520px));
   padding: 16px 18px;
   border: 3px solid #f7a868;
   border-radius: 8px;
   background: #fffdf7;
   box-shadow: 0 18px 48px rgba(45, 36, 32, 0.3);
-  transform: translateX(-50%);
+  transform: none;
   text-align: center;
 }
 
 .guided-step-order .guided-coach {
-  right: 28px;
-  bottom: 92px;
+  right: 36px;
+  bottom: 42px;
   left: auto;
   top: auto;
-  width: min(38vw, 390px);
+  width: min(34vw, 360px);
   transform: none;
 }
 
 .guided-step-topping .guided-coach {
-  top: 128px;
-  right: max(24px, 10vw);
+  top: 118px;
+  right: max(28px, 8vw);
   left: auto;
-  width: min(36vw, 380px);
+  width: min(34vw, 360px);
   transform: none;
 }
 
 .guided-step-cut .guided-coach {
-  top: 128px;
-  right: max(24px, 10vw);
+  top: 118px;
+  right: max(28px, 8vw);
   left: auto;
-  width: min(36vw, 380px);
+  width: min(34vw, 360px);
   transform: none;
 }
 
 .guided-step-move-mode .guided-coach,
 .guided-step-serve .guided-coach {
-  top: 112px;
-  right: 28px;
+  top: 86px;
+  right: 36px;
   left: auto;
-  width: min(36vw, 360px);
+  width: min(34vw, 350px);
   transform: none;
 }
 
 .guided-step-move-piece .guided-coach {
-  top: 120px;
-  left: 28px;
+  top: 92px;
+  left: 36px;
   right: auto;
-  width: min(36vw, 360px);
+  width: min(34vw, 350px);
   transform: none;
 }
 
 .guided-step-combo .guided-coach {
-  bottom: 84px;
-  left: 28px;
+  bottom: 44px;
+  left: 36px;
   right: auto;
   top: auto;
-  width: min(36vw, 360px);
+  width: min(34vw, 350px);
   transform: none;
 }
 
 .guided-step-trophy .guided-coach {
-  bottom: 96px;
-  right: 28px;
+  bottom: 44px;
+  right: 36px;
   left: auto;
   top: auto;
-  width: min(36vw, 360px);
+  width: min(34vw, 350px);
+  transform: none;
+}
+
+.is-guided .guided-coach {
+  top: var(--guided-coach-top, 18px);
+  right: auto;
+  bottom: auto;
+  left: var(--guided-coach-left, calc(50vw - 260px));
+  width: min(calc(100vw - 32px), var(--guided-coach-width, 520px));
   transform: none;
 }
 
@@ -1444,6 +1464,13 @@ rt {
 .guided-coach > .button {
   width: 100%;
   margin-top: 12px;
+  min-height: 58px;
+  background: #f27059;
+  color: #fff;
+  font-size: 1.08rem;
+  box-shadow: 0 12px 22px rgba(242, 112, 89, 0.3), inset 0 -4px 0 rgba(179, 77, 49, 0.28);
+  transform: translateY(0);
+  animation: guided-cta-pulse 1s ease-in-out infinite alternate;
 }
 
 .guided-coach small {
@@ -1496,6 +1523,13 @@ rt {
   filter: drop-shadow(0 0 7px #ffd166) drop-shadow(0 0 12px #ffd166);
 }
 
+.guided-step-serve .serve-button {
+  background: #f27059;
+  color: #fff;
+  box-shadow: 0 0 0 6px rgba(255, 209, 102, 0.45), 0 14px 24px rgba(242, 112, 89, 0.34), inset 0 -4px 0 rgba(179, 77, 49, 0.28);
+  transform: translateY(-2px) scale(1.03);
+}
+
 .guided-step-topping .topping-focus-ring {
   opacity: 1;
   animation: guided-topping-pulse 1s ease-in-out infinite alternate;
@@ -1522,6 +1556,11 @@ rt {
   to { stroke-dashoffset: -18; }
 }
 
+@keyframes guided-cta-pulse {
+  from { transform: translateY(0); }
+  to { transform: translateY(-2px); }
+}
+
 @keyframes guided-topping-pulse {
   from { stroke-width: 4; }
   to { stroke-width: 7; }
@@ -1539,17 +1578,20 @@ rt {
   .guided-step-combo .score-card--combo,
   .guided-step-trophy .trophy-shelf,
   .guided-step-trophy .trophy-earned-button,
-  .guided-step-cut .cutting-guide line {
+  .guided-step-cut .cutting-guide line,
+  .guided-intro__actions .button--primary,
+  .guided-coach > .button {
     animation: none;
   }
 }
 
 @media (max-width: 620px) {
-  .guided-coach {
-    top: 10px;
+  .is-guided .guided-coach {
+    top: var(--guided-coach-top, 10px);
     right: auto;
-    left: 10px;
-    width: calc(100vw - 20px);
+    bottom: auto;
+    left: var(--guided-coach-left, 10px);
+    width: min(calc(100vw - 20px), var(--guided-coach-width, calc(100vw - 20px)));
     padding: 12px 14px;
     transform: none;
   }
@@ -1608,6 +1650,15 @@ rt {
   .guided-step-move-mode .guided-coach,
   .guided-step-serve .guided-coach {
     top: 104px;
+  }
+
+  .is-guided .guided-coach {
+    top: var(--guided-coach-top, 18px);
+    right: auto;
+    bottom: auto;
+    left: var(--guided-coach-left, 16px);
+    width: min(calc(100vw - 32px), var(--guided-coach-width, 420px));
+    transform: none;
   }
 }
 
@@ -1681,12 +1732,6 @@ rt {
   flex-wrap: wrap;
   gap: 8px 12px;
   align-items: center;
-}
-
-.order-bubble__name {
-  margin: 0;
-  color: #b34d31;
-  font-weight: 800;
 }
 
 .order-bubble__cake {

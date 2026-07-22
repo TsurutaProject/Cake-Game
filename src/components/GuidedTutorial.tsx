@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { FuriganaText } from './FuriganaText'
 
 export type GuidedTutorialStep =
@@ -17,6 +17,14 @@ interface GuidedTutorialProps {
   onAdvance: () => void
   onSkip: () => void
 }
+
+interface CoachPosition {
+  left: number
+  top: number
+  width: number
+}
+
+type CoachPlacement = 'above' | 'below' | 'left' | 'right'
 
 const stepContent: Record<Exclude<GuidedTutorialStep, 'intro'>, { title: string; text: string }> = {
   order: {
@@ -58,10 +66,21 @@ const focusSelectors: Partial<Record<GuidedTutorialStep, string>> = {
   topping: '.cake-board',
   cut: '.cake-board',
   'move-mode': '.mode-button--move',
-  'move-piece': '.mode-button--move',
+  'move-piece': '.tray',
   serve: '.serve-button',
   combo: '.score-card--combo',
   trophy: '.trophy-shelf',
+}
+
+const placementPriority: Partial<Record<GuidedTutorialStep, CoachPlacement[]>> = {
+  order: ['below', 'right', 'left', 'above'],
+  topping: ['right', 'below', 'left', 'above'],
+  cut: ['right', 'below', 'left', 'above'],
+  'move-mode': ['left', 'above', 'right', 'below'],
+  'move-piece': ['left', 'above', 'right', 'below'],
+  serve: ['left', 'above', 'right', 'below'],
+  combo: ['left', 'below', 'above', 'right'],
+  trophy: ['right', 'below', 'above', 'left'],
 }
 
 const tutorialSteps: Exclude<GuidedTutorialStep, 'intro'>[] = [
@@ -76,6 +95,9 @@ const tutorialSteps: Exclude<GuidedTutorialStep, 'intro'>[] = [
 ]
 
 export function GuidedTutorial({ step, onAdvance, onSkip }: GuidedTutorialProps) {
+  const coachRef = useRef<HTMLElement | null>(null)
+  const [coachPosition, setCoachPosition] = useState<CoachPosition | null>(null)
+
   useEffect(() => {
     if (step === null || step === 'intro') {
       return
@@ -83,6 +105,89 @@ export function GuidedTutorial({ step, onAdvance, onSkip }: GuidedTutorialProps)
 
     const focusTarget = document.querySelector(focusSelectors[step] ?? '')
     focusTarget?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [step])
+
+  useEffect(() => {
+    if (step === null || step === 'intro') {
+      return
+    }
+
+    const updateCoachPosition = (): void => {
+      const focusTarget = document.querySelector(focusSelectors[step] ?? '')
+      const coach = coachRef.current
+
+      if (focusTarget === null || coach === null) {
+        return
+      }
+
+      const margin = 16
+      const targetRect = focusTarget.getBoundingClientRect()
+      const coachRect = coach.getBoundingClientRect()
+      const coachWidth = Math.min(420, window.innerWidth - margin * 2)
+      const coachHeight = Math.max(coachRect.height, 180)
+
+      const clamp = (value: number, min: number, max: number): number =>
+        Math.min(Math.max(value, min), max)
+
+      const getCandidate = (placement: CoachPlacement): CoachPosition => {
+        if (placement === 'right') {
+          return {
+            left: targetRect.right + margin,
+            top: targetRect.top + targetRect.height / 2 - coachHeight / 2,
+            width: coachWidth,
+          }
+        }
+
+        if (placement === 'left') {
+          return {
+            left: targetRect.left - coachWidth - margin,
+            top: targetRect.top + targetRect.height / 2 - coachHeight / 2,
+            width: coachWidth,
+          }
+        }
+
+        if (placement === 'below') {
+          return {
+            left: targetRect.left + targetRect.width / 2 - coachWidth / 2,
+            top: targetRect.bottom + margin,
+            width: coachWidth,
+          }
+        }
+
+        return {
+          left: targetRect.left + targetRect.width / 2 - coachWidth / 2,
+          top: targetRect.top - coachHeight - margin,
+          width: coachWidth,
+        }
+      }
+
+      const fits = (candidate: CoachPosition): boolean =>
+        candidate.left >= margin &&
+        candidate.left + candidate.width <= window.innerWidth - margin &&
+        candidate.top >= margin &&
+        candidate.top + coachHeight <= window.innerHeight - margin
+
+      const candidate =
+        (placementPriority[step] ?? ['right', 'left', 'below', 'above'])
+          .map(getCandidate)
+          .find(fits) ?? getCandidate('below')
+
+      setCoachPosition({
+        left: clamp(candidate.left, margin, window.innerWidth - coachWidth - margin),
+        top: clamp(candidate.top, margin, window.innerHeight - coachHeight - margin),
+        width: coachWidth,
+      })
+    }
+
+    const frameId = window.requestAnimationFrame(updateCoachPosition)
+    window.addEventListener('resize', updateCoachPosition)
+    window.addEventListener('scroll', updateCoachPosition, true)
+
+    return () => {
+      window.cancelAnimationFrame(frameId)
+      window.removeEventListener('resize', updateCoachPosition)
+      window.removeEventListener('scroll', updateCoachPosition, true)
+    }
   }, [step])
 
   if (step === null) {
@@ -113,11 +218,18 @@ export function GuidedTutorial({ step, onAdvance, onSkip }: GuidedTutorialProps)
 
   const content = stepContent[step]
   const stepNumber = tutorialSteps.indexOf(step) + 1
+  const coachStyle = coachPosition === null
+    ? undefined
+    : ({
+        '--guided-coach-left': `${coachPosition.left}px`,
+        '--guided-coach-top': `${coachPosition.top}px`,
+        '--guided-coach-width': `${coachPosition.width}px`,
+      } as CSSProperties)
 
   return (
     <>
       <div className="guided-shade" aria-hidden="true" />
-      <aside className="guided-coach" aria-live="polite">
+      <aside ref={coachRef} className="guided-coach" style={coachStyle} aria-live="polite">
         <div className="guided-coach__header">
           <span>{stepNumber} / {tutorialSteps.length}</span>
           <button type="button" onClick={onSkip}>スキップ</button>
