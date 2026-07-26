@@ -58,6 +58,9 @@ export interface Stage {
   id: string
   title: string
   description: string
+  goal: string
+  targetServes: number
+  requiredUnlockedCakeId?: CakeKind
   allowedCuts: number[]
   orderIds: string[]
 }
@@ -95,6 +98,7 @@ export interface ResultState {
   kind: ResultKind
   title: string
   detail: string
+  celebration?: 'stage-clear' | 'final-clear'
   primaryLabel?: string
   secondaryLabel?: string
   combo?: number

@@ -14,6 +14,7 @@ export function ResultMessage({ result, onDismiss, onConfirm }: ResultMessagePro
   }
 
   const isWarning = result.kind === 'warning'
+  const isCelebration = result.celebration !== undefined
   const reactionImage =
     result.kind === 'try-again'
       ? feedbackImages.dissatisfied
@@ -28,7 +29,19 @@ export function ResultMessage({ result, onDismiss, onConfirm }: ResultMessagePro
         : '落ち着いた表情'
 
   return (
-    <div className="result-overlay" role="alertdialog" aria-modal="true" aria-labelledby="result-title">
+    <div
+      className={`result-overlay${isCelebration ? ` result-overlay--${result.celebration}` : ''}`}
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="result-title"
+    >
+      {isCelebration ? (
+        <div className="result-confetti" aria-hidden="true">
+          {Array.from({ length: 18 }, (_, index) => (
+            <i key={index} />
+          ))}
+        </div>
+      ) : null}
       <section className={`result-message result-message--${result.kind}`} aria-live="polite">
         <div className="result-message__scene">
           <img className="result-message__face" src={reactionImage} alt={reactionLabel} />

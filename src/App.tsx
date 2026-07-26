@@ -42,8 +42,13 @@ import './styles/game.css'
 
 const maxTrayPieces = 3
 const visibleCustomerCount = 5
-const stage = stages[0]
-const stageOrders = orders.filter((order) => stage.orderIds.includes(order.id))
+const getStageOrders = (stageId: string): Order[] => {
+  const stage = stages.find((currentStage) => currentStage.id === stageId) ?? stages[0]
+
+  return orders.filter((order) => stage.orderIds.includes(order.id))
+}
+const initialStage = stages[0]
+const initialStageOrders = getStageOrders(initialStage.id)
 const initialCake = getCakeById('shortcake')
 
 const idleResult: ResultState = {
@@ -83,7 +88,7 @@ interface TrophyToast {
   trophy: TrophyDefinition
 }
 
-const getVisibleQueueOrders = (activeOrder: Order): Order[] => {
+const getVisibleQueueOrders = (stageOrders: Order[], activeOrder: Order): Order[] => {
   const activeIndex = stageOrders.findIndex((order) => order.id === activeOrder.id)
   const startIndex = activeIndex === -1 ? 0 : activeIndex
 
@@ -131,6 +136,7 @@ const getDifficultyRange = (servedCount: number, comboCount: number): Difficulty
 }
 
 const getOrderPool = (
+  stageOrders: Order[],
   unlockedCakeIds: CakeKind[],
   servedCount: number,
   comboCount: number,
@@ -146,15 +152,18 @@ const getOrderPool = (
 }
 
 const selectNextOrderId = (
+  stageOrders: Order[],
   unlockedCakeIds: CakeKind[],
   servedCount: number,
   comboCount: number,
   blockedOrderId?: string,
 ): string => {
-  const pool = getOrderPool(unlockedCakeIds, servedCount, comboCount)
+  const pool = getOrderPool(stageOrders, unlockedCakeIds, servedCount, comboCount)
 
   if (pool.length === 0) {
-    return stageOrders[0].id
+    const unlockedFallbackOrder = stageOrders.find((order) => unlockedCakeIds.includes(order.cakeKind))
+
+    return unlockedFallbackOrder?.id ?? initialStageOrders[0].id
   }
 
   let offset = 0
@@ -211,9 +220,11 @@ function App() {
   const [guidedTutorialStep, setGuidedTutorialStep] = useState<GuidedTutorialStep | null>(
     () => shouldShowTutorial() ? 'intro' : null,
   )
+  const [activeStageIndex, setActiveStageIndex] = useState(0)
+  const [stageServedCount, setStageServedCount] = useState(0)
   const [servedCount, setServedCount] = useState(0)
   const [activeOrderId, setActiveOrderId] = useState(() =>
-    shouldShowTutorial() ? 'half' : selectNextOrderId(['shortcake'], 0, 0),
+    shouldShowTutorial() ? 'half' : selectNextOrderId(initialStageOrders, ['shortcake'], 0, 0),
   )
   const [activeCakeId, setActiveCakeId] = useState<CakeKind>('shortcake')
   const [unlockedCakeIds, setUnlockedCakeIds] = useState<CakeKind[]>(['shortcake'])
@@ -250,13 +261,18 @@ function App() {
   const [hasExplainedCombo, setHasExplainedCombo] = useState(false)
   const [hasExplainedTrophies, setHasExplainedTrophies] = useState(false)
 
+  const activeStage = stages[activeStageIndex] ?? stages[0]
+  const stageOrders = useMemo(() => getStageOrders(activeStage.id), [activeStage.id])
   const activeCake = getCakeById(activeCakeId)
   const activeToppings = useMemo(
     () => getCakeToppings(activeCake, toppingLayoutIndex),
     [activeCake, toppingLayoutIndex],
   )
   const activeOrder = stageOrders.find((order) => order.id === activeOrderId) ?? stageOrders[0]
-  const visibleQueueOrders = useMemo(() => getVisibleQueueOrders(activeOrder), [activeOrder])
+  const visibleQueueOrders = useMemo(
+    () => getVisibleQueueOrders(stageOrders, activeOrder),
+    [activeOrder, stageOrders],
+  )
   const trophyProgress: TrophyProgress = {
     servedCount,
     bestCombo,
@@ -331,6 +347,11 @@ function App() {
     activeOrder.cakeKind === activeCake.id &&
     selectedPieces.length > 0 &&
     areFractionsEqual(total, activeOrder.target)
+  const isFinalStage = activeStageIndex === stages.length - 1
+  const stageProgressValue = isFinalStage ? unlockedTrophyIds.length : stageServedCount
+  const stageProgressTarget = isFinalStage ? trophies.length : activeStage.targetServes
+  const stageProgressRatio = Math.min(stageProgressValue / stageProgressTarget, 1)
+  const isStageGoalComplete = stageProgressValue >= stageProgressTarget
 
   const resetBoardState = (cakeId: CakeKind): void => {
     const cake = getCakeById(cakeId)
@@ -355,6 +376,8 @@ function App() {
 
   const advanceGuidedTutorial = (): void => {
     if (guidedTutorialStep === 'intro') {
+      setActiveStageIndex(0)
+      setStageServedCount(0)
       setActiveOrderId('half')
       setActiveCakeId('shortcake')
       setToppingLayoutIndex(0)
@@ -447,12 +470,20 @@ function App() {
     }
 
     const nextUnlockedCakeIds = [...unlockedCakeIds, cakeId]
+    const nextStageCandidate = stages[activeStageIndex + 1]
+    const shouldAdvanceStageAfterUnlock =
+      nextStageCandidate?.requiredUnlockedCakeId === cakeId &&
+      stageServedCount >= activeStage.targetServes
     const nextProgress: TrophyProgress = {
       ...trophyProgress,
       unlockedCakeCount: nextUnlockedCakeIds.length,
     }
     const currentUnlockedTrophyIds = new Set(unlockedTrophyIds)
     const nextUnlockedTrophyIds = new Set(getUnlockedTrophyIds(nextProgress))
+    const hasFinalGoalCleared =
+      activeStageIndex === stages.length - 1 &&
+      currentUnlockedTrophyIds.size < trophies.length &&
+      nextUnlockedTrophyIds.size >= trophies.length
     const newlyUnlockedTrophies = trophies.filter(
       (trophy) =>
         nextUnlockedTrophyIds.has(trophy.id) &&
@@ -461,13 +492,41 @@ function App() {
 
     setMoney((currentMoney) => currentMoney - cake.price)
     setUnlockedCakeIds(nextUnlockedCakeIds)
+    if (shouldAdvanceStageAfterUnlock && nextStageCandidate !== undefined) {
+      const nextStageOrders = getStageOrders(nextStageCandidate.id)
+
+      setActiveStageIndex(activeStageIndex + 1)
+      setStageServedCount(0)
+      setActiveOrderId(selectNextOrderId(
+        nextStageOrders,
+        nextUnlockedCakeIds,
+        servedCount,
+        combo,
+        activeOrder.id,
+      ))
+      resetBoardState(activeCake.id)
+    }
     showTrophyToasts(newlyUnlockedTrophies)
     setResult({
       kind: 'bonus',
-      title: `${cake.name}を解放しました`,
-      detail: newlyUnlockedTrophies.length > 0
-        ? 'トロフィーも獲得しました。次から注文に登場します。'
-        : '今のお客さんはそのまま。次から注文に登場します。',
+      title: hasFinalGoalCleared
+        ? '完全達成！'
+        : shouldAdvanceStageAfterUnlock && nextStageCandidate !== undefined
+          ? 'ステージクリア！'
+        : `${cake.name}を解放しました`,
+      detail: hasFinalGoalCleared
+        ? 'トロフィーを全部集めました！'
+        : shouldAdvanceStageAfterUnlock && nextStageCandidate !== undefined
+          ? `${nextStageCandidate.title}へ進みます。`
+        : newlyUnlockedTrophies.length > 0
+          ? 'トロフィーも獲得しました。次から注文に登場します。'
+          : '今のお客さんはそのまま。次から注文に登場します。',
+      celebration: hasFinalGoalCleared
+        ? 'final-clear'
+        : shouldAdvanceStageAfterUnlock ? 'stage-clear' : undefined,
+      primaryLabel: hasFinalGoalCleared
+        ? 'やった！'
+        : shouldAdvanceStageAfterUnlock ? '次のステージへ' : undefined,
     })
   }
 
@@ -568,6 +627,7 @@ function App() {
 
       if (guidedTutorialStep === 'serve') {
         const nextOrderId = selectNextOrderId(
+          stageOrders,
           unlockedCakeIds,
           servedCount,
           combo,
@@ -597,6 +657,18 @@ function App() {
       const earnedMoney =
         baseReward + comboReward + compactPieceReward + toppingReward + recipeReward
       const nextServedCount = servedCount + 1
+      const nextStageServedCount = stageServedCount + 1
+      const nextStageCandidate = stages[activeStageIndex + 1]
+      const hasMetStageGoal = nextStageServedCount >= activeStage.targetServes
+      const isNextStageLocked =
+        hasMetStageGoal &&
+        nextStageCandidate?.requiredUnlockedCakeId !== undefined &&
+        !unlockedCakeIds.includes(nextStageCandidate.requiredUnlockedCakeId)
+      const hasStageCleared =
+        hasMetStageGoal && activeStageIndex < stages.length - 1 && !isNextStageLocked
+      const nextStageIndex = hasStageCleared ? activeStageIndex + 1 : activeStageIndex
+      const nextStage = stages[nextStageIndex] ?? activeStage
+      const nextStageOrders = hasStageCleared ? getStageOrders(nextStage.id) : stageOrders
       const nextCleanServes = cleanServes + (cutToppingLabels.length === 0 ? 1 : 0)
       const nextRecipeServes = recipeServes + (recipeMatched ? 1 : 0)
       const combinationKey = getPieceCombinationKey(selectedPieces)
@@ -628,6 +700,7 @@ function App() {
         usedCutDenominators,
       )
       const nextOrderId = selectNextOrderId(
+        nextStageOrders,
         unlockedCakeIds,
         nextServedCount,
         nextCombo,
@@ -650,6 +723,10 @@ function App() {
       }
       const currentUnlockedTrophyIds = new Set(unlockedTrophyIds)
       const nextUnlockedTrophyIds = new Set(getUnlockedTrophyIds(nextProgress))
+      const hasFinalGoalCleared =
+        activeStageIndex === stages.length - 1 &&
+        currentUnlockedTrophyIds.size < trophies.length &&
+        nextUnlockedTrophyIds.size >= trophies.length
       const newlyUnlockedTrophies = trophies.filter(
         (trophy) =>
           nextUnlockedTrophyIds.has(trophy.id) &&
@@ -687,6 +764,12 @@ function App() {
       setThreePieceServes(nextThreePieceServes)
       setServedFractionKeys(nextServedFractionKeys)
       setUsedCutDenominators(nextUsedCutDenominators)
+      setStageServedCount(
+        hasStageCleared ? 0 : Math.min(nextStageServedCount, activeStage.targetServes),
+      )
+      if (hasStageCleared) {
+        setActiveStageIndex(nextStageIndex)
+      }
       setActiveOrderId(nextOrderId)
       setToppingLayoutIndex((currentIndex) =>
         getNextToppingLayoutIndex(activeCake.id, currentIndex),
@@ -696,24 +779,52 @@ function App() {
       if (cutToppingLabels.length === 0) {
         setResult({
           kind: 'bonus',
-          title: 'ありがとう！',
-          detail: recipeMatched ? 'お願いどおりの作り方だね！' : 'きれいに切れているね！',
+          title: hasStageCleared
+            ? 'ステージクリア！'
+            : hasFinalGoalCleared ? '完全達成！'
+            : isNextStageLocked ? 'チョコケーキを解放しよう' : 'ありがとう！',
+          detail: hasStageCleared
+            ? `${nextStage.title}へ進みます。`
+            : hasFinalGoalCleared
+              ? 'トロフィーを全部集めました！'
+            : isNextStageLocked
+              ? `${nextStageCandidate.title}へ進むには、チョコレートケーキの解放が必要です。`
+            : recipeMatched ? 'お願いどおりの作り方だね！' : 'きれいに切れているね！',
+          celebration: hasStageCleared
+            ? 'stage-clear'
+            : hasFinalGoalCleared ? 'final-clear' : undefined,
           earnedMoney,
           combo: nextCombo,
           highlights: resultHighlights,
-          primaryLabel: '次へ',
+          primaryLabel: hasStageCleared
+            ? '次のステージへ'
+            : hasFinalGoalCleared ? 'やった！' : '次へ',
         })
         return
       }
 
       setResult({
         kind: 'success',
-        title: 'ありがとう！',
-        detail: 'ぴったりの量だね。',
+        title: hasStageCleared
+          ? 'ステージクリア！'
+          : hasFinalGoalCleared ? '完全達成！'
+          : isNextStageLocked ? 'チョコケーキを解放しよう' : 'ありがとう！',
+        detail: hasStageCleared
+          ? `${nextStage.title}へ進みます。`
+          : hasFinalGoalCleared
+            ? 'トロフィーを全部集めました！'
+          : isNextStageLocked
+            ? `${nextStageCandidate.title}へ進むには、チョコレートケーキの解放が必要です。`
+            : 'ぴったりの量だね。',
+        celebration: hasStageCleared
+          ? 'stage-clear'
+          : hasFinalGoalCleared ? 'final-clear' : undefined,
         earnedMoney,
         combo: nextCombo,
         highlights: resultHighlights,
-        primaryLabel: '次へ',
+        primaryLabel: hasStageCleared
+          ? '次のステージへ'
+          : hasFinalGoalCleared ? 'やった！' : '次へ',
       })
       return
     }
@@ -747,8 +858,17 @@ function App() {
     <main className={mainClassName}>
       <header className="game-header">
         <div>
-          <h1><FuriganaText text={stage.title} /></h1>
-          <p><FuriganaText text={stage.description} /></p>
+          <div className="game-title-row">
+            <h1><FuriganaText text="分ケーキ" /></h1>
+            <span className="stage-eyebrow">
+              <FuriganaText text={`ステージ ${activeStageIndex + 1}`} />
+              <small>/{stages.length}</small>
+            </span>
+          </div>
+          <p>
+            <strong><FuriganaText text={activeStage.title} /></strong>
+            <span><FuriganaText text={activeStage.description} /></span>
+          </p>
         </div>
       </header>
 
@@ -795,13 +915,6 @@ function App() {
 
         <aside className="side-panel">
           <HelpMenu onOpenTutorial={openGuidedTutorial} />
-          <section className="goal-card" aria-label="最終目標">
-            <div>
-              <small><FuriganaText text="最終目標" /></small>
-              <strong><FuriganaText text="トロフィーを全部集めよう" /></strong>
-            </div>
-            <span>{unlockedTrophyIds.length}/{trophies.length}</span>
-          </section>
           <dl className="score-board" aria-label="スコア">
             <div className="score-card score-card--sales">
               <dt><FuriganaText text="売上" /></dt>
@@ -843,6 +956,21 @@ function App() {
           />
         </aside>
       </div>
+      <aside className="status-dock" aria-label="現在の表">
+        <section
+          className={isStageGoalComplete ? 'stage-card is-complete' : 'stage-card'}
+          aria-label="ステージ目標"
+        >
+          <div className="stage-card__header">
+            <small><FuriganaText text="今の目標" /></small>
+            <span>{isStageGoalComplete ? '達成！' : `${stageProgressValue}/${stageProgressTarget}`}</span>
+          </div>
+          <strong><FuriganaText text={activeStage.goal} /></strong>
+          <div className="stage-card__meter" aria-hidden="true">
+            <span style={{ width: `${stageProgressRatio * 100}%` }} />
+          </div>
+        </section>
+      </aside>
       {carriedPiece !== null ? (
         <>
           <img

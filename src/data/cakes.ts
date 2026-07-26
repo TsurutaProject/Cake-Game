@@ -55,7 +55,7 @@ export const cakes: CakeDefinition[] = [
   {
     id: 'chocolate',
     name: 'チョコレートケーキ',
-    price: 1000,
+    price: 3000,
     description: 'カカオクリームのチョコケーキ。',
     imageUrl: cakeImages.chocolate,
     baseColor: '#6f3f2f',
