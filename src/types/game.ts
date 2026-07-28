@@ -52,6 +52,7 @@ export interface Order {
   message: string
   difficulty: number
   recipePieces?: Fraction[]
+  perfectPieceCount?: number
 }
 
 export interface Stage {
@@ -63,6 +64,16 @@ export interface Stage {
   requiredUnlockedCakeId?: CakeKind
   allowedCuts: number[]
   orderIds: string[]
+}
+
+export type GameScreen = 'title' | 'stageSelect' | 'playing' | 'stageResult' | 'chapterResult'
+
+export interface StageResultSummary {
+  stageIndex: number
+  servedCount: number
+  earnedMoney: number
+  bestCombo: number
+  unlockedNextStage: boolean
 }
 
 export type TrophyMetric =

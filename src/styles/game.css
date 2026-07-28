@@ -6,6 +6,301 @@
     linear-gradient(135deg, #fff7ed 0%, #ffe8d3 44%, #f3fff9 100%);
 }
 
+.flow-screen {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top left, rgba(132, 220, 198, 0.38), transparent 32rem),
+    linear-gradient(135deg, #fff7ed 0%, #ffe8d3 44%, #f3fff9 100%);
+}
+
+.flow-panel {
+  width: min(100%, 920px);
+  padding: clamp(24px, 5vw, 48px);
+  border: 2px solid rgba(112, 83, 70, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 22px 44px rgba(80, 48, 32, 0.14);
+}
+
+.flow-panel--title {
+  display: grid;
+  justify-items: center;
+  max-width: 580px;
+  text-align: center;
+}
+
+.flow-panel__eyebrow,
+.stage-result-modal__eyebrow {
+  margin: 0 0 8px;
+  color: #b34d31;
+  font-size: 0.9rem;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.flow-panel h1,
+.flow-panel h2,
+.flow-panel p {
+  margin-top: 0;
+}
+
+.flow-panel h1 {
+  margin-bottom: 10px;
+  color: #2d2420;
+  font-size: clamp(2rem, 5vw, 3.6rem);
+  line-height: 1.1;
+}
+
+.flow-panel > p:not(.flow-panel__eyebrow) {
+  max-width: 540px;
+  margin-bottom: 20px;
+  color: #69534a;
+  font-size: 1.08rem;
+  font-weight: 800;
+  line-height: 1.6;
+}
+
+.flow-panel__cake {
+  width: min(250px, 62vw);
+  aspect-ratio: 1;
+  margin: 0 auto 20px;
+  object-fit: contain;
+  filter: drop-shadow(0 14px 16px rgba(80, 48, 32, 0.16));
+}
+
+.flow-panel__start {
+  min-width: 220px;
+  min-height: 56px;
+  font-size: 1.15rem;
+}
+
+.flow-panel--stage-select {
+  max-width: 1080px;
+}
+
+.flow-panel__heading {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 26px;
+}
+
+.flow-panel__heading h1 {
+  margin-bottom: 0;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+}
+
+.stage-select-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.stage-select-card {
+  display: grid;
+  grid-template-rows: auto auto auto auto;
+  gap: 10px;
+  min-height: 210px;
+  padding: 18px;
+  border: 2px solid rgba(112, 83, 70, 0.14);
+  border-radius: 8px;
+  background: #fffdf7;
+}
+
+.stage-select-card.is-completed {
+  border-color: rgba(84, 188, 164, 0.68);
+  background: #f1fff9;
+}
+
+.stage-select-card.is-locked {
+  background: #f2eee8;
+  color: #887a70;
+}
+
+.stage-select-card__topline {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  color: #b34d31;
+}
+
+.stage-select-card__topline span {
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: #fff7d6;
+  color: #795548;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.stage-select-card.is-locked .stage-select-card__topline span {
+  background: #ded6cc;
+  color: #756960;
+}
+
+.stage-select-card h2,
+.stage-select-card small {
+  margin: 0;
+}
+
+.stage-select-card h2 {
+  color: #3a3029;
+  font-size: 1.25rem;
+}
+
+.stage-select-card small {
+  color: #795548;
+  font-weight: 900;
+}
+
+.stage-select-card button {
+  align-self: end;
+  min-height: 44px;
+}
+
+.stage-select-card.is-unlocked .button--primary {
+  background: #f27059;
+  color: #fff;
+  box-shadow: inset 0 -4px 0 rgba(179, 77, 49, 0.28);
+}
+
+.stage-select-card.is-unlocked .button--primary:hover {
+  background: #e85f47;
+}
+
+.stage-result-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(45, 36, 32, 0.58);
+}
+
+.stage-result-modal {
+  position: relative;
+  z-index: 1;
+  width: min(94vw, 620px);
+  padding: clamp(24px, 5vw, 38px);
+  border: 3px solid #d8aa74;
+  border-radius: 8px;
+  background: #fffdf7;
+  box-shadow: 0 26px 64px rgba(45, 36, 32, 0.34);
+  text-align: center;
+  animation: result-celebration-pop 520ms cubic-bezier(0.2, 1.35, 0.35, 1) both;
+}
+
+.stage-result-modal h2,
+.stage-result-modal__title,
+.stage-result-modal__goal {
+  margin: 0;
+}
+
+.stage-result-modal h2 {
+  color: #b34d31;
+  font-size: clamp(1.8rem, 5vw, 2.6rem);
+  line-height: 1.15;
+}
+
+.stage-result-modal__title {
+  margin-top: 8px;
+  color: #3a3029;
+  font-size: 1.18rem;
+  font-weight: 900;
+}
+
+.stage-result-modal__goal {
+  margin-top: 8px;
+  color: #69534a;
+  font-weight: 800;
+}
+
+.stage-result-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 22px 0 14px;
+}
+
+.stage-result-stats div {
+  padding: 12px 8px;
+  border: 2px solid rgba(112, 83, 70, 0.12);
+  border-radius: 8px;
+  background: #fff7ed;
+}
+
+.stage-result-stats dt {
+  color: #795548;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.stage-result-stats dd {
+  margin: 5px 0 0;
+  color: #2d2420;
+  font-size: 1.05rem;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.stage-result-modal__unlock {
+  margin: 0 0 18px;
+  color: #16745e;
+  font-weight: 900;
+}
+
+.stage-result-modal__actions,
+.flow-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.stage-result-modal__actions .button {
+  min-width: 132px;
+  min-height: 46px;
+}
+
+.stage-result-modal__actions .button--primary {
+  min-width: 190px;
+  background: #f27059;
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(242, 112, 89, 0.32), inset 0 -4px 0 rgba(179, 77, 49, 0.28);
+}
+
+.stage-result-modal__actions .button--primary:hover {
+  background: #e85f47;
+}
+
+.flow-panel--chapter-result {
+  max-width: 660px;
+  text-align: center;
+}
+
+.chapter-stage-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 22px 0;
+}
+
+.chapter-stage-list span {
+  padding: 11px 8px;
+  border: 2px solid rgba(84, 188, 164, 0.45);
+  border-radius: 8px;
+  background: #e9fff6;
+  color: #216c5b;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
 .game-header {
   display: flex;
   align-items: flex-end;
@@ -63,6 +358,12 @@
 .stage-eyebrow small {
   color: #795548;
   font-size: 0.88rem;
+}
+
+.stage-select-return {
+  min-height: 42px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
 }
 
 .game-header__eyebrow {
@@ -1372,6 +1673,7 @@ rt {
 .guided-intro__dialog > p:not(.guided-intro__label) {
   margin: 0;
   color: #5f493f;
+  font-size: 1.2rem;
   line-height: 1.7;
 }
 
@@ -1506,12 +1808,13 @@ rt {
 .guided-coach > strong {
   display: block;
   color: #3a3029;
-  font-size: 1.25rem;
+  font-size: 1.4rem;
 }
 
 .guided-coach p {
   margin: 7px 0 0;
   color: #5f493f;
+  font-size: 1.15rem;
   line-height: 1.55;
 }
 
@@ -1651,11 +1954,11 @@ rt {
   }
 
   .guided-coach > strong {
-    font-size: 1.05rem;
+    font-size: 1.2rem;
   }
 
   .guided-coach p {
-    font-size: 0.9rem;
+    font-size: 1.05rem;
   }
 
 }
@@ -1866,9 +2169,9 @@ rt {
   gap: 5px 10px;
   align-items: center;
   padding: 9px 12px;
-  border: 2px solid rgba(132, 220, 198, 0.52);
+  border: 2px solid rgba(198, 171, 126, 0.46);
   border-radius: 8px;
-  background: #f2fff9;
+  background: #f2e8cf;
 }
 
 .order-bubble__pieces {
@@ -1884,20 +2187,13 @@ rt {
   min-width: 48px;
   min-height: 34px;
   padding: 4px 10px;
-  border: 2px solid rgba(84, 188, 164, 0.58);
+  border: 2px solid rgba(168, 135, 82, 0.38);
   border-radius: 6px;
-  background: #fff;
-  color: #164d40;
+  background: #fffaf1;
+  color: #3a3029;
   font-size: 1.08rem;
   font-weight: 900;
   line-height: 1;
-}
-
-.order-bubble__plan small {
-  grid-column: 2;
-  color: #376b60;
-  font-size: 0.85rem;
-  font-weight: 800;
 }
 
 .order-bubble__message {
@@ -3319,6 +3615,50 @@ rt {
   }
 
   .mode-selector button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 620px) {
+  .flow-screen {
+    padding: 16px;
+  }
+
+  .flow-panel {
+    padding: 24px 18px;
+  }
+
+  .flow-panel__heading {
+    align-items: stretch;
+    flex-direction: column;
+    margin-bottom: 18px;
+  }
+
+  .flow-panel__heading .button {
+    width: 100%;
+  }
+
+  .stage-select-grid,
+  .chapter-stage-list,
+  .stage-result-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .stage-select-card {
+    min-height: 0;
+  }
+
+  .stage-result-overlay {
+    align-items: start;
+    overflow-y: auto;
+    padding: 16px;
+  }
+
+  .stage-result-modal {
+    margin: auto 0;
+  }
+
+  .stage-result-modal__actions .button {
     width: 100%;
   }
 }

@@ -29,35 +29,35 @@ type CoachPlacement = 'above' | 'below' | 'left' | 'right'
 const stepContent: Record<Exclude<GuidedTutorialStep, 'intro'>, { title: string; text: string }> = {
   order: {
     title: 'まずは注文を見よう',
-    text: 'このお客さんは、ショートケーキを1/2ほしがっています。ケーキの種類と目標の分数を見てから作ろう。',
+    text: '1/2の注文を確認しよう',
   },
   topping: {
     title: 'トッピングも見よう',
-    text: 'イチゴ、バナナ、クリームの上を切ると、トッピングにも切れ目が入ります。トッピングを切らずに販売できるとボーナスがつきます。',
+    text: '切らないとボーナス',
   },
   cut: {
     title: 'ケーキを半分に切ろう',
-    text: '半分にする時は、光っている点線をケーキの端から反対側の端までまっすぐスワイプしよう。小さいピースは、外側から中心の黄色い点までの短いカットでも作れます。',
+    text: '半分に切ってみよう',
   },
   'move-mode': {
     title: 'トングに持ちかえよう',
-    text: '右の「移す」ボタンを押して、ピースを運ぶ準備をしよう。',
+    text: '移すを押そう',
   },
   'move-piece': {
     title: '1/2のピースを運ぼう',
-    text: '切れたピースをつかみ、光っているトレイまでドラッグしよう。',
+    text: 'トレイへ運ぼう',
   },
   serve: {
     title: 'お客さんに販売しよう',
-    text: 'トレイの合計は1/2です。注文と同じなので「販売する」を押そう。',
+    text: '1/2なら販売しよう',
   },
   combo: {
     title: 'コンボを見てみよう',
-    text: '本番で続けて成功すると、ここにコンボ数とロウソクが増えます。コンボが続くほど売上ボーナスも増えます。',
+    text: '成功でコンボが続く',
   },
   trophy: {
     title: 'トロフィーのしくみ',
-    text: 'ミッションを達成するとトロフィーが増えます。獲得したものは左下の「一覧」で確認できます。練習では増えません。',
+    text: '達成するとトロフィー獲得',
   },
 }
 
@@ -201,7 +201,7 @@ export function GuidedTutorial({ step, onAdvance, onSkip }: GuidedTutorialProps)
           <p className="guided-intro__label">はじめての<FuriganaText text="接客" /></p>
           <h2 id="guided-intro-title"><FuriganaText text="いっしょに注文を完成させよう" /></h2>
           <p>
-            <FuriganaText text="光っている場所を順番に操作して、ケーキの販売とコンボ、トロフィーを練習します。" />
+            <FuriganaText text="1/2の販売を練習しよう" />
           </p>
           <div className="guided-intro__actions">
             <button type="button" className="button" onClick={onSkip}>

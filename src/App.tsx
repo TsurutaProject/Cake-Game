@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CakeBoard } from './components/CakeBoard'
 import { CakeSelector } from './components/CakeSelector'
 import { CustomerQueue } from './components/CustomerQueue'
@@ -12,6 +12,12 @@ import { Tray } from './components/Tray'
 import { TrophyShelf } from './components/TrophyShelf'
 import { CakePiecePreview } from './components/CakePiecePreview'
 import {
+  ChapterResultModal,
+  StageResultModal,
+  StageSelectScreen,
+  TitleScreen,
+} from './components/StageFlowScreens'
+import {
   cakes,
   getCakeById,
   getCakeToppings,
@@ -24,9 +30,11 @@ import { toolImages } from './data/assets'
 import type {
   CakeKind,
   CakePieceModel,
+  GameScreen,
   InteractionMode,
   Order,
   ResultState,
+  StageResultSummary,
   TrophyDefinition,
   TrophyProgress,
 } from './types/game'
@@ -63,12 +71,39 @@ const compactPieceBonusReward = 80
 const recipeBonusReward = 180
 const defaultCuts = 12
 const tutorialStorageKey = 'fraction-cake-guided-tutorial-seen-v3'
+const completedStagesStorageKey = 'cake-game:completed-stages'
+const maxUnlockedStageStorageKey = 'cake-game:max-unlocked-stage'
 
 const shouldShowTutorial = (): boolean => {
   try {
     return window.localStorage.getItem(tutorialStorageKey) !== 'true'
   } catch {
     return true
+  }
+}
+
+const readCompletedStageIds = (): string[] => {
+  try {
+    const storedValue = window.localStorage.getItem(completedStagesStorageKey)
+    const parsedValue: unknown = storedValue === null ? [] : JSON.parse(storedValue)
+
+    return Array.isArray(parsedValue)
+      ? parsedValue.filter((stageId): stageId is string => typeof stageId === 'string')
+      : []
+  } catch {
+    return []
+  }
+}
+
+const readMaxUnlockedStage = (): number => {
+  try {
+    const storedValue = Number(window.localStorage.getItem(maxUnlockedStageStorageKey))
+
+    return Number.isInteger(storedValue) && storedValue >= 0
+      ? Math.min(storedValue, stages.length - 1)
+      : 0
+  } catch {
+    return 0
   }
 }
 
@@ -88,12 +123,31 @@ interface TrophyToast {
   trophy: TrophyDefinition
 }
 
+interface TutorialSnapshot {
+  activeStageIndex: number
+  stageServedCount: number
+  activeOrderId: string
+  activeCakeId: CakeKind
+  unlockedCakeIds: CakeKind[]
+  currentCuts: number
+  interactionMode: InteractionMode
+  toppingLayoutIndex: number
+  cutBatch: number
+  boardPieces: CakePieceModel[]
+  selectedPieces: CakePieceModel[]
+  cutMarkAngles: number[]
+  carriedPiece: CarriedPieceState | null
+  result: ResultState
+  currentCutDenominators: number[]
+  stageCompletion: boolean
+}
+
 const getVisibleQueueOrders = (stageOrders: Order[], activeOrder: Order): Order[] => {
   const activeIndex = stageOrders.findIndex((order) => order.id === activeOrder.id)
   const startIndex = activeIndex === -1 ? 0 : activeIndex
 
   return Array.from(
-    { length: visibleCustomerCount },
+    { length: Math.min(visibleCustomerCount, stageOrders.length) },
     (_, index) => stageOrders[(startIndex + index) % stageOrders.length],
   )
 }
@@ -157,28 +211,33 @@ const selectNextOrderId = (
   servedCount: number,
   comboCount: number,
   blockedOrderId?: string,
+  blockedCustomerName?: Order['customerName'],
 ): string => {
   const pool = getOrderPool(stageOrders, unlockedCakeIds, servedCount, comboCount)
+  const unlockedFallbackPool = stageOrders.filter((order) => unlockedCakeIds.includes(order.cakeKind))
+  const basePool = pool.length > 0 ? pool : unlockedFallbackPool
 
-  if (pool.length === 0) {
-    const unlockedFallbackOrder = stageOrders.find((order) => unlockedCakeIds.includes(order.cakeKind))
-
-    return unlockedFallbackOrder?.id ?? initialStageOrders[0].id
+  if (basePool.length === 0) {
+    return initialStageOrders[0].id
   }
 
+  const customerChangedPool = blockedCustomerName === undefined
+    ? basePool
+    : basePool.filter((order) => order.customerName !== blockedCustomerName)
+  const availablePool = customerChangedPool.length > 0 ? customerChangedPool : basePool
   let offset = 0
 
-  while (offset < pool.length) {
-    const order = pool[(servedCount + comboCount + offset) % pool.length]
+  while (offset < availablePool.length) {
+    const order = availablePool[(servedCount + comboCount + offset) % availablePool.length]
 
-    if (pool.length === 1 || order.id !== blockedOrderId) {
+    if (availablePool.length === 1 || order.id !== blockedOrderId) {
       return order.id
     }
 
     offset += 1
   }
 
-  return pool[0].id
+  return availablePool[0].id
 }
 
 const formatRecipe = (recipePieces: Order['recipePieces']): string =>
@@ -217,24 +276,17 @@ const getUnlockedTrophyIds = (progress: TrophyProgress): string[] =>
     .map((trophy) => trophy.id)
 
 function App() {
-  const [guidedTutorialStep, setGuidedTutorialStep] = useState<GuidedTutorialStep | null>(
-    () => shouldShowTutorial() ? 'intro' : null,
-  )
+  const [screen, setScreen] = useState<GameScreen>('title')
+  const [guidedTutorialStep, setGuidedTutorialStep] = useState<GuidedTutorialStep | null>(null)
   const [activeStageIndex, setActiveStageIndex] = useState(0)
   const [stageServedCount, setStageServedCount] = useState(0)
   const [servedCount, setServedCount] = useState(0)
-  const [activeOrderId, setActiveOrderId] = useState(() =>
-    shouldShowTutorial() ? 'half' : selectNextOrderId(initialStageOrders, ['shortcake'], 0, 0),
-  )
+  const [activeOrderId, setActiveOrderId] = useState(initialStageOrders[0].id)
   const [activeCakeId, setActiveCakeId] = useState<CakeKind>('shortcake')
   const [unlockedCakeIds, setUnlockedCakeIds] = useState<CakeKind[]>(['shortcake'])
-  const [currentCuts, setCurrentCuts] = useState(() => shouldShowTutorial() ? 2 : defaultCuts)
+  const [currentCuts, setCurrentCuts] = useState(defaultCuts)
   const [interactionMode, setInteractionMode] = useState<InteractionMode>('cut')
-  const [toppingLayoutIndex, setToppingLayoutIndex] = useState(() =>
-    shouldShowTutorial()
-      ? 0
-      : Math.floor(Math.random() * getToppingLayoutCount('shortcake')),
-  )
+  const [toppingLayoutIndex, setToppingLayoutIndex] = useState(0)
   const [cutBatch, setCutBatch] = useState(0)
   const [boardPieces, setBoardPieces] = useState<CakePieceModel[]>([
     createWholeCakePiece(initialCake),
@@ -247,6 +299,9 @@ function App() {
   const [combo, setCombo] = useState(0)
   const [bestCombo, setBestCombo] = useState(0)
   const [totalEarned, setTotalEarned] = useState(0)
+  const [stageEarned, setStageEarned] = useState(0)
+  const [stageBestCombo, setStageBestCombo] = useState(0)
+  const [highestUnlockedCakeCount, setHighestUnlockedCakeCount] = useState(1)
   const [cleanServes, setCleanServes] = useState(0)
   const [recipeServes, setRecipeServes] = useState(0)
   const [twelfthPieceServes, setTwelfthPieceServes] = useState(0)
@@ -258,6 +313,11 @@ function App() {
   const [usedCutDenominators, setUsedCutDenominators] = useState<number[]>([])
   const [currentCutDenominators, setCurrentCutDenominators] = useState<number[]>([])
   const [trophyToasts, setTrophyToasts] = useState<TrophyToast[]>([])
+  const [completedStageIds, setCompletedStageIds] = useState<string[]>(readCompletedStageIds)
+  const [maxUnlockedStage, setMaxUnlockedStage] = useState(readMaxUnlockedStage)
+  const [stageResultSummary, setStageResultSummary] = useState<StageResultSummary | null>(null)
+  const stageCompletionRef = useRef(false)
+  const tutorialSnapshotRef = useRef<TutorialSnapshot | null>(null)
   const [hasExplainedCombo, setHasExplainedCombo] = useState(false)
   const [hasExplainedTrophies, setHasExplainedTrophies] = useState(false)
 
@@ -268,10 +328,13 @@ function App() {
     () => getCakeToppings(activeCake, toppingLayoutIndex),
     [activeCake, toppingLayoutIndex],
   )
-  const activeOrder = stageOrders.find((order) => order.id === activeOrderId) ?? stageOrders[0]
+  const tutorialExampleOrder = guidedTutorialStep === null
+    ? undefined
+    : orders.find((order) => order.id === 'half')
+  const activeOrder = tutorialExampleOrder ?? stageOrders.find((order) => order.id === activeOrderId) ?? stageOrders[0]
   const visibleQueueOrders = useMemo(
-    () => getVisibleQueueOrders(stageOrders, activeOrder),
-    [activeOrder, stageOrders],
+    () => tutorialExampleOrder === undefined ? getVisibleQueueOrders(stageOrders, activeOrder) : [tutorialExampleOrder],
+    [activeOrder, stageOrders, tutorialExampleOrder],
   )
   const trophyProgress: TrophyProgress = {
     servedCount,
@@ -279,7 +342,7 @@ function App() {
     totalEarned,
     cleanServes,
     recipeServes,
-    unlockedCakeCount: unlockedCakeIds.length,
+    unlockedCakeCount: highestUnlockedCakeCount,
     twelfthPieceServes,
     allToppingsCutServes,
     halfRecipeVariations: halfRecipeSignatures.length,
@@ -289,6 +352,22 @@ function App() {
     distinctCutDenominators: usedCutDenominators.length,
   }
   const unlockedTrophyIds = getUnlockedTrophyIds(trophyProgress)
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(completedStagesStorageKey, JSON.stringify(completedStageIds))
+    } catch {
+      // Progress remains available for this session when browser storage is unavailable.
+    }
+  }, [completedStageIds])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(maxUnlockedStageStorageKey, String(maxUnlockedStage))
+    } catch {
+      // Progress remains available for this session when browser storage is unavailable.
+    }
+  }, [maxUnlockedStage])
 
   const showTrophyToasts = (unlockedTrophies: TrophyDefinition[]): void => {
     if (unlockedTrophies.length === 0) {
@@ -325,12 +404,50 @@ function App() {
   }
 
   const skipGuidedTutorial = (): void => {
+    const tutorialSnapshot = tutorialSnapshotRef.current
+
+    if (tutorialSnapshot !== null) {
+      restoreTutorialSnapshot(tutorialSnapshot)
+    } else {
+      setCurrentCuts(defaultCuts)
+    }
     setGuidedTutorialStep(null)
-    setCurrentCuts(defaultCuts)
     rememberTutorialCompletion()
   }
 
   const openGuidedTutorial = (): void => {
+    if (screen !== 'playing') {
+      return
+    }
+
+    tutorialSnapshotRef.current = {
+      activeStageIndex,
+      stageServedCount,
+      activeOrderId,
+      activeCakeId,
+      unlockedCakeIds,
+      currentCuts,
+      interactionMode,
+      toppingLayoutIndex,
+      cutBatch,
+      boardPieces,
+      selectedPieces,
+      cutMarkAngles,
+      carriedPiece,
+      result,
+      currentCutDenominators,
+      stageCompletion: stageCompletionRef.current,
+    }
+    setActiveCakeId('shortcake')
+    setCurrentCuts(2)
+    setInteractionMode('cut')
+    setToppingLayoutIndex(0)
+    setCutBatch(0)
+    setBoardPieces([createWholeCakePiece(initialCake)])
+    setSelectedPieces([])
+    setCutMarkAngles([])
+    setCarriedPiece(null)
+    setCurrentCutDenominators([])
     setGuidedTutorialStep('intro')
     setResult(idleResult)
   }
@@ -348,8 +465,8 @@ function App() {
     selectedPieces.length > 0 &&
     areFractionsEqual(total, activeOrder.target)
   const isFinalStage = activeStageIndex === stages.length - 1
-  const stageProgressValue = isFinalStage ? unlockedTrophyIds.length : stageServedCount
-  const stageProgressTarget = isFinalStage ? trophies.length : activeStage.targetServes
+  const stageProgressValue = stageServedCount
+  const stageProgressTarget = activeStage.targetServes
   const stageProgressRatio = Math.min(stageProgressValue / stageProgressTarget, 1)
   const isStageGoalComplete = stageProgressValue >= stageProgressTarget
 
@@ -364,7 +481,76 @@ function App() {
     setInteractionMode('cut')
   }
 
+  const startStage = (stageIndex: number): void => {
+    const stage = stages[stageIndex] ?? stages[0]
+    const stageUnlockedCakeIds: CakeKind[] = stage.requiredUnlockedCakeId === undefined
+      ? ['shortcake']
+      : addUniqueValue(['shortcake'], stage.requiredUnlockedCakeId)
+    const showTutorial = stageIndex === 0 && shouldShowTutorial()
+    const firstOrderId = showTutorial
+      ? 'half'
+      : selectNextOrderId(getStageOrders(stage.id), stageUnlockedCakeIds, servedCount, 0)
+
+    stageCompletionRef.current = false
+    setActiveStageIndex(stageIndex)
+    setStageServedCount(0)
+    setActiveOrderId(firstOrderId)
+    setActiveCakeId('shortcake')
+    setUnlockedCakeIds(stageUnlockedCakeIds)
+    setCurrentCuts(showTutorial ? 2 : defaultCuts)
+    setInteractionMode('cut')
+    setToppingLayoutIndex(0)
+    setCutBatch(0)
+    setBoardPieces([createWholeCakePiece(initialCake)])
+    setSelectedPieces([])
+    setCutMarkAngles([])
+    setCarriedPiece(null)
+    setResult(idleResult)
+    setCombo(0)
+    setStageEarned(0)
+    setStageBestCombo(0)
+    setCurrentCutDenominators([])
+    setTrophyToasts([])
+    setHasExplainedCombo(false)
+    setHasExplainedTrophies(false)
+    setStageResultSummary(null)
+    setGuidedTutorialStep(showTutorial ? 'intro' : null)
+    setScreen('playing')
+  }
+
+  const completeStage = (
+    served: number,
+    earned: number,
+    stageBestCombo: number,
+  ): void => {
+    if (stageCompletionRef.current) {
+      return
+    }
+
+    stageCompletionRef.current = true
+    const nextStageIndex = activeStageIndex + 1
+    const unlockedNextStage = nextStageIndex < stages.length && maxUnlockedStage < nextStageIndex
+
+    setCompletedStageIds((currentStageIds) => addUniqueValue(currentStageIds, activeStage.id))
+    setMaxUnlockedStage((currentMax) => Math.max(currentMax, Math.min(nextStageIndex, stages.length - 1)))
+    setStageResultSummary({
+      stageIndex: activeStageIndex,
+      servedCount: served,
+      earnedMoney: earned,
+      bestCombo: stageBestCombo,
+      unlockedNextStage,
+    })
+    setResult(idleResult)
+    setCarriedPiece(null)
+    setTrophyToasts([])
+    setScreen('stageResult')
+  }
+
   const clearTray = (): void => {
+    if (screen !== 'playing') {
+      return
+    }
+
     resetBoardState(activeCake.id)
     setResult(idleResult)
   }
@@ -374,15 +560,28 @@ function App() {
     setResult(idleResult)
   }
 
+  const restoreTutorialSnapshot = (tutorialSnapshot: TutorialSnapshot): void => {
+    setActiveStageIndex(tutorialSnapshot.activeStageIndex)
+    setStageServedCount(tutorialSnapshot.stageServedCount)
+    setActiveOrderId(tutorialSnapshot.activeOrderId)
+    setActiveCakeId(tutorialSnapshot.activeCakeId)
+    setUnlockedCakeIds(tutorialSnapshot.unlockedCakeIds)
+    setCurrentCuts(tutorialSnapshot.currentCuts)
+    setInteractionMode(tutorialSnapshot.interactionMode)
+    setToppingLayoutIndex(tutorialSnapshot.toppingLayoutIndex)
+    setCutBatch(tutorialSnapshot.cutBatch)
+    setBoardPieces(tutorialSnapshot.boardPieces)
+    setSelectedPieces(tutorialSnapshot.selectedPieces)
+    setCutMarkAngles(tutorialSnapshot.cutMarkAngles)
+    setCarriedPiece(tutorialSnapshot.carriedPiece)
+    setCurrentCutDenominators(tutorialSnapshot.currentCutDenominators)
+    setResult(tutorialSnapshot.result)
+    stageCompletionRef.current = tutorialSnapshot.stageCompletion
+    tutorialSnapshotRef.current = null
+  }
+
   const advanceGuidedTutorial = (): void => {
     if (guidedTutorialStep === 'intro') {
-      setActiveStageIndex(0)
-      setStageServedCount(0)
-      setActiveOrderId('half')
-      setActiveCakeId('shortcake')
-      setToppingLayoutIndex(0)
-      setCurrentCuts(2)
-      resetCakeBoard('shortcake')
       setGuidedTutorialStep('order')
       return
     }
@@ -403,18 +602,26 @@ function App() {
     }
 
     if (guidedTutorialStep === 'trophy') {
+      const tutorialSnapshot = tutorialSnapshotRef.current
+
+      if (tutorialSnapshot !== null) {
+        restoreTutorialSnapshot(tutorialSnapshot)
+      } else {
+        setCurrentCuts(defaultCuts)
+      }
       setGuidedTutorialStep(null)
-      setCurrentCuts(defaultCuts)
       rememberTutorialCompletion()
     }
   }
 
   const handleCutCake = (cuts: number, cutAngles: number[]): void => {
+    if (screen !== 'playing') {
+      return
+    }
+
     const nextBatch = cutBatch + 1
     const nextBoardPieces = cutCakePieces(boardPieces, cutAngles, activeToppings, nextBatch, activeCake)
-    const hasHalfPieces = nextBoardPieces.some((piece) =>
-      areFractionsEqual(piece.fraction, { numerator: 1, denominator: 2 }),
-    )
+    const hasCutPieces = nextBoardPieces.length > 1
 
     setCutBatch(nextBatch)
     setCutMarkAngles((currentAngles) => mergeCutMarkAngles(currentAngles, cutAngles))
@@ -423,12 +630,16 @@ function App() {
     )
     setBoardPieces(nextBoardPieces)
     setResult(idleResult)
-    if (guidedTutorialStep === 'cut' && hasHalfPieces) {
+    if (guidedTutorialStep === 'cut' && hasCutPieces) {
       setGuidedTutorialStep('move-mode')
     }
   }
 
   const handleChangeInteractionMode = (mode: InteractionMode): void => {
+    if (screen !== 'playing') {
+      return
+    }
+
     if (guidedTutorialStep === 'move-mode' && mode !== 'move') {
       return
     }
@@ -446,6 +657,10 @@ function App() {
     piece: CakePieceModel,
     position: { x: number; y: number } | null,
   ): void => {
+    if (screen !== 'playing') {
+      return
+    }
+
     setCarriedPiece(
       position === null
         ? null
@@ -458,11 +673,19 @@ function App() {
   }
 
   const handleSelectCake = (cakeId: CakeKind): void => {
+    if (screen !== 'playing') {
+      return
+    }
+
     setActiveCakeId(cakeId)
     resetCakeBoard(cakeId)
   }
 
   const handleBuyCake = (cakeId: CakeKind): void => {
+    if (screen !== 'playing') {
+      return
+    }
+
     const cake = getCakeById(cakeId)
 
     if (unlockedCakeIds.includes(cakeId) || money < cake.price) {
@@ -470,20 +693,12 @@ function App() {
     }
 
     const nextUnlockedCakeIds = [...unlockedCakeIds, cakeId]
-    const nextStageCandidate = stages[activeStageIndex + 1]
-    const shouldAdvanceStageAfterUnlock =
-      nextStageCandidate?.requiredUnlockedCakeId === cakeId &&
-      stageServedCount >= activeStage.targetServes
     const nextProgress: TrophyProgress = {
       ...trophyProgress,
-      unlockedCakeCount: nextUnlockedCakeIds.length,
+      unlockedCakeCount: Math.max(highestUnlockedCakeCount, nextUnlockedCakeIds.length),
     }
     const currentUnlockedTrophyIds = new Set(unlockedTrophyIds)
     const nextUnlockedTrophyIds = new Set(getUnlockedTrophyIds(nextProgress))
-    const hasFinalGoalCleared =
-      activeStageIndex === stages.length - 1 &&
-      currentUnlockedTrophyIds.size < trophies.length &&
-      nextUnlockedTrophyIds.size >= trophies.length
     const newlyUnlockedTrophies = trophies.filter(
       (trophy) =>
         nextUnlockedTrophyIds.has(trophy.id) &&
@@ -492,45 +707,31 @@ function App() {
 
     setMoney((currentMoney) => currentMoney - cake.price)
     setUnlockedCakeIds(nextUnlockedCakeIds)
-    if (shouldAdvanceStageAfterUnlock && nextStageCandidate !== undefined) {
-      const nextStageOrders = getStageOrders(nextStageCandidate.id)
-
-      setActiveStageIndex(activeStageIndex + 1)
-      setStageServedCount(0)
-      setActiveOrderId(selectNextOrderId(
-        nextStageOrders,
-        nextUnlockedCakeIds,
-        servedCount,
-        combo,
-        activeOrder.id,
-      ))
-      resetBoardState(activeCake.id)
-    }
+    setHighestUnlockedCakeCount((currentCount) => Math.max(currentCount, nextUnlockedCakeIds.length))
     showTrophyToasts(newlyUnlockedTrophies)
+    const shouldCompleteStageAfterUnlock =
+      stageServedCount >= activeStage.targetServes &&
+      stages[activeStageIndex + 1]?.requiredUnlockedCakeId === cakeId
+
+    if (shouldCompleteStageAfterUnlock) {
+      completeStage(stageServedCount, stageEarned, stageBestCombo)
+      return
+    }
+
     setResult({
       kind: 'bonus',
-      title: hasFinalGoalCleared
-        ? '完全達成！'
-        : shouldAdvanceStageAfterUnlock && nextStageCandidate !== undefined
-          ? 'ステージクリア！'
-        : `${cake.name}を解放しました`,
-      detail: hasFinalGoalCleared
-        ? 'トロフィーを全部集めました！'
-        : shouldAdvanceStageAfterUnlock && nextStageCandidate !== undefined
-          ? `${nextStageCandidate.title}へ進みます。`
-        : newlyUnlockedTrophies.length > 0
+      title: `${cake.name}を解放しました`,
+      detail: newlyUnlockedTrophies.length > 0
           ? 'トロフィーも獲得しました。次から注文に登場します。'
           : '今のお客さんはそのまま。次から注文に登場します。',
-      celebration: hasFinalGoalCleared
-        ? 'final-clear'
-        : shouldAdvanceStageAfterUnlock ? 'stage-clear' : undefined,
-      primaryLabel: hasFinalGoalCleared
-        ? 'やった！'
-        : shouldAdvanceStageAfterUnlock ? '次のステージへ' : undefined,
     })
   }
 
   const handleMovePieceToTray = (piece: CakePieceModel): void => {
+    if (screen !== 'playing') {
+      return
+    }
+
     setResult(idleResult)
 
     if (!boardPieces.some((currentPiece) => currentPiece.id === piece.id)) {
@@ -565,6 +766,10 @@ function App() {
   }
 
   const handleReturnPieceToBoard = (piece: CakePieceModel): void => {
+    if (screen !== 'playing') {
+      return
+    }
+
     setResult(idleResult)
     setSelectedPieces((currentPieces) =>
       currentPieces.filter((currentPiece) => currentPiece.id !== piece.id),
@@ -586,6 +791,10 @@ function App() {
   }
 
   const handleServe = (allowRecipeMismatch = false): void => {
+    if (screen !== 'playing') {
+      return
+    }
+
     if (activeOrder.cakeKind !== activeCake.id) {
       setResult({
         kind: 'try-again',
@@ -609,6 +818,10 @@ function App() {
 
     if (areFractionsEqual(total, activeOrder.target)) {
       const recipeMatched = matchesRecipe(selectedPieces, activeOrder.recipePieces)
+      const pieceCountMatched =
+        activeOrder.perfectPieceCount !== undefined &&
+        selectedPieces.length === activeOrder.perfectPieceCount
+      const hasPerfectEvaluation = recipeMatched || pieceCountMatched
 
       if (
         activeOrder.recipePieces !== undefined &&
@@ -632,6 +845,7 @@ function App() {
           servedCount,
           combo,
           activeOrder.id,
+          activeOrder.customerName,
         )
 
         setActiveOrderId(nextOrderId)
@@ -653,7 +867,7 @@ function App() {
       const comboReward = Math.max(0, nextCombo - 1) * 50
       const compactPieceReward = selectedPieces.length <= 2 ? compactPieceBonusReward : 0
       const toppingReward = cutToppingLabels.length === 0 ? toppingBonusReward : 0
-      const recipeReward = recipeMatched ? recipeBonusReward : 0
+      const recipeReward = hasPerfectEvaluation ? recipeBonusReward : 0
       const earnedMoney =
         baseReward + comboReward + compactPieceReward + toppingReward + recipeReward
       const nextServedCount = servedCount + 1
@@ -664,11 +878,6 @@ function App() {
         hasMetStageGoal &&
         nextStageCandidate?.requiredUnlockedCakeId !== undefined &&
         !unlockedCakeIds.includes(nextStageCandidate.requiredUnlockedCakeId)
-      const hasStageCleared =
-        hasMetStageGoal && activeStageIndex < stages.length - 1 && !isNextStageLocked
-      const nextStageIndex = hasStageCleared ? activeStageIndex + 1 : activeStageIndex
-      const nextStage = stages[nextStageIndex] ?? activeStage
-      const nextStageOrders = hasStageCleared ? getStageOrders(nextStage.id) : stageOrders
       const nextCleanServes = cleanServes + (cutToppingLabels.length === 0 ? 1 : 0)
       const nextRecipeServes = recipeServes + (recipeMatched ? 1 : 0)
       const combinationKey = getPieceCombinationKey(selectedPieces)
@@ -700,11 +909,12 @@ function App() {
         usedCutDenominators,
       )
       const nextOrderId = selectNextOrderId(
-        nextStageOrders,
+        stageOrders,
         unlockedCakeIds,
         nextServedCount,
         nextCombo,
         activeOrder.id,
+        activeOrder.customerName,
       )
       const nextProgress: TrophyProgress = {
         servedCount: nextServedCount,
@@ -712,7 +922,7 @@ function App() {
         totalEarned: totalEarned + earnedMoney,
         cleanServes: nextCleanServes,
         recipeServes: nextRecipeServes,
-        unlockedCakeCount: unlockedCakeIds.length,
+        unlockedCakeCount: highestUnlockedCakeCount,
         twelfthPieceServes: nextTwelfthPieceServes,
         allToppingsCutServes: nextAllToppingsCutServes,
         halfRecipeVariations: nextHalfRecipeSignatures.length,
@@ -723,16 +933,18 @@ function App() {
       }
       const currentUnlockedTrophyIds = new Set(unlockedTrophyIds)
       const nextUnlockedTrophyIds = new Set(getUnlockedTrophyIds(nextProgress))
-      const hasFinalGoalCleared =
-        activeStageIndex === stages.length - 1 &&
-        currentUnlockedTrophyIds.size < trophies.length &&
-        nextUnlockedTrophyIds.size >= trophies.length
+      const hasStageCleared =
+        !stageCompletionRef.current && hasMetStageGoal && !isNextStageLocked
       const newlyUnlockedTrophies = trophies.filter(
         (trophy) =>
           nextUnlockedTrophyIds.has(trophy.id) &&
           !currentUnlockedTrophyIds.has(trophy.id),
       )
       const resultHighlights: string[] = []
+
+      if (pieceCountMatched) {
+        resultHighlights.push(`${activeOrder.perfectPieceCount}ピースで最高評価！`)
+      }
 
       if (!hasExplainedCombo) {
         resultHighlights.push('コンボ開始！続けて成功すると売上ボーナスが増えるよ。')
@@ -754,6 +966,8 @@ function App() {
       setBestCombo((currentBestCombo) => Math.max(currentBestCombo, nextCombo))
       setMoney((currentMoney) => currentMoney + earnedMoney)
       setTotalEarned((currentTotalEarned) => currentTotalEarned + earnedMoney)
+      setStageEarned((currentStageEarned) => currentStageEarned + earnedMoney)
+      setStageBestCombo((currentBest) => Math.max(currentBest, nextCombo))
       setServedCount(nextServedCount)
       setCleanServes(nextCleanServes)
       setRecipeServes(nextRecipeServes)
@@ -764,67 +978,47 @@ function App() {
       setThreePieceServes(nextThreePieceServes)
       setServedFractionKeys(nextServedFractionKeys)
       setUsedCutDenominators(nextUsedCutDenominators)
-      setStageServedCount(
-        hasStageCleared ? 0 : Math.min(nextStageServedCount, activeStage.targetServes),
-      )
-      if (hasStageCleared) {
-        setActiveStageIndex(nextStageIndex)
-      }
+      setStageServedCount(Math.min(nextStageServedCount, activeStage.targetServes))
       setActiveOrderId(nextOrderId)
       setToppingLayoutIndex((currentIndex) =>
         getNextToppingLayoutIndex(activeCake.id, currentIndex),
       )
       resetBoardState(activeCake.id)
 
+      if (hasStageCleared) {
+        completeStage(
+          nextStageServedCount,
+          stageEarned + earnedMoney,
+          Math.max(stageBestCombo, nextCombo),
+        )
+        return
+      }
+
       if (cutToppingLabels.length === 0) {
         setResult({
           kind: 'bonus',
-          title: hasStageCleared
-            ? 'ステージクリア！'
-            : hasFinalGoalCleared ? '完全達成！'
-            : isNextStageLocked ? 'チョコケーキを解放しよう' : 'ありがとう！',
-          detail: hasStageCleared
-            ? `${nextStage.title}へ進みます。`
-            : hasFinalGoalCleared
-              ? 'トロフィーを全部集めました！'
-            : isNextStageLocked
+          title: isNextStageLocked ? 'チョコケーキを解放しよう' : 'ありがとう！',
+          detail: isNextStageLocked
               ? `${nextStageCandidate.title}へ進むには、チョコレートケーキの解放が必要です。`
-            : recipeMatched ? 'お願いどおりの作り方だね！' : 'きれいに切れているね！',
-          celebration: hasStageCleared
-            ? 'stage-clear'
-            : hasFinalGoalCleared ? 'final-clear' : undefined,
+              : hasPerfectEvaluation ? '最高評価の作り方だね！' : 'きれいに切れているね！',
           earnedMoney,
           combo: nextCombo,
           highlights: resultHighlights,
-          primaryLabel: hasStageCleared
-            ? '次のステージへ'
-            : hasFinalGoalCleared ? 'やった！' : '次へ',
+          primaryLabel: '次へ',
         })
         return
       }
 
       setResult({
         kind: 'success',
-        title: hasStageCleared
-          ? 'ステージクリア！'
-          : hasFinalGoalCleared ? '完全達成！'
-          : isNextStageLocked ? 'チョコケーキを解放しよう' : 'ありがとう！',
-        detail: hasStageCleared
-          ? `${nextStage.title}へ進みます。`
-          : hasFinalGoalCleared
-            ? 'トロフィーを全部集めました！'
-          : isNextStageLocked
+        title: isNextStageLocked ? 'チョコケーキを解放しよう' : 'ありがとう！',
+        detail: isNextStageLocked
             ? `${nextStageCandidate.title}へ進むには、チョコレートケーキの解放が必要です。`
             : 'ぴったりの量だね。',
-        celebration: hasStageCleared
-          ? 'stage-clear'
-          : hasFinalGoalCleared ? 'final-clear' : undefined,
         earnedMoney,
         combo: nextCombo,
         highlights: resultHighlights,
-        primaryLabel: hasStageCleared
-          ? '次のステージへ'
-          : hasFinalGoalCleared ? 'やった！' : '次へ',
+        primaryLabel: '次へ',
       })
       return
     }
@@ -848,8 +1042,57 @@ function App() {
     }
   }
 
+  const showStageSelect = (): void => {
+    setGuidedTutorialStep(null)
+    setResult(idleResult)
+    setCarriedPiece(null)
+    setStageResultSummary(null)
+    setScreen('stageSelect')
+  }
+
+  const continuePlayingStage = (): void => {
+    setStageResultSummary(null)
+    setResult(idleResult)
+    setScreen('playing')
+  }
+
+  const handleSelectStage = (stageIndex: number): void => {
+    if (stageIndex > maxUnlockedStage) {
+      return
+    }
+
+    startStage(stageIndex)
+  }
+
+  if (screen === 'title') {
+    return <TitleScreen onStart={() => setScreen('stageSelect')} />
+  }
+
+  if (screen === 'stageSelect') {
+    return (
+      <StageSelectScreen
+        stages={stages}
+        maxUnlockedStage={maxUnlockedStage}
+        completedStageIds={completedStageIds}
+        onSelectStage={handleSelectStage}
+        onBackToTitle={() => setScreen('title')}
+      />
+    )
+  }
+
+  if (screen === 'chapterResult') {
+    return (
+      <ChapterResultModal
+        stages={stages}
+        onSelectStage={showStageSelect}
+        onRestart={() => startStage(0)}
+      />
+    )
+  }
+
   const mainClassName = [
     'game-shell',
+    screen === 'stageResult' ? 'is-stage-finished' : '',
     carriedPiece === null ? '' : 'is-carrying-piece',
     guidedTutorialStep === null ? '' : `is-guided guided-step-${guidedTutorialStep}`,
   ].filter(Boolean).join(' ')
@@ -861,14 +1104,16 @@ function App() {
           <div className="game-title-row">
             <h1><FuriganaText text="分ケーキ" /></h1>
             <span className="stage-eyebrow">
-              <FuriganaText text={`ステージ ${activeStageIndex + 1}`} />
-              <small>/{stages.length}</small>
+              <FuriganaText text={`ステージ${activeStageIndex + 1}「${activeStage.title}」`} />
             </span>
+            <button
+              type="button"
+              className="button button--secondary stage-select-return"
+              onClick={showStageSelect}
+            >
+              ステージ一覧
+            </button>
           </div>
-          <p>
-            <strong><FuriganaText text={activeStage.title} /></strong>
-            <span><FuriganaText text={activeStage.description} /></span>
-          </p>
         </div>
       </header>
 
@@ -933,11 +1178,13 @@ function App() {
               </span>
             </div>
           </dl>
-          <ResultMessage
-            result={result}
-            onDismiss={() => setResult(idleResult)}
-            onConfirm={() => handleServe(true)}
-          />
+          {screen === 'playing' ? (
+            <ResultMessage
+              result={result}
+              onDismiss={() => setResult(idleResult)}
+              onConfirm={() => handleServe(true)}
+            />
+          ) : null}
           <Tray
             selectedPieces={selectedPieces}
             total={total}
@@ -1001,11 +1248,31 @@ function App() {
           </aside>
         ))}
       </div>
-      <GuidedTutorial
-        step={guidedTutorialStep}
-        onAdvance={advanceGuidedTutorial}
-        onSkip={skipGuidedTutorial}
-      />
+      {screen === 'playing' ? (
+        <GuidedTutorial
+          step={guidedTutorialStep}
+          onAdvance={advanceGuidedTutorial}
+          onSkip={skipGuidedTutorial}
+        />
+      ) : null}
+      {screen === 'stageResult' && stageResultSummary !== null ? (
+        <StageResultModal
+          stage={activeStage}
+          summary={stageResultSummary}
+          isFinalStage={isFinalStage}
+          onReplay={continuePlayingStage}
+          onSelectStage={showStageSelect}
+          onNextStage={() => {
+            if (isFinalStage) {
+              setStageResultSummary(null)
+              setScreen('chapterResult')
+              return
+            }
+
+            startStage(activeStageIndex + 1)
+          }}
+        />
+      ) : null}
     </main>
   )
 }

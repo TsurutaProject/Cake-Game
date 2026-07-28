@@ -24,7 +24,7 @@ const getPiecePlan = (order: Order): Fraction[] => {
 
 export function OrderBubble({ order, cake }: OrderBubbleProps) {
   const piecePlan = getPiecePlan(order)
-  const hasSeveralPieces = piecePlan.length > 1
+  const isPieceCountChallenge = order.perfectPieceCount !== undefined
 
   return (
     <section className="order-bubble" aria-label="注文">
@@ -47,17 +47,27 @@ export function OrderBubble({ order, cake }: OrderBubbleProps) {
           </strong>
         </p>
         <div className="order-bubble__plan">
-          <span className="order-bubble__label"><FuriganaText text="作るピース" /></span>
-          <div className="order-bubble__pieces" aria-label={`作るピースは ${piecePlan.map(formatFraction).join(' と ')}`}>
-            {piecePlan.map((fraction, index) => (
-              <span key={`${formatFraction(fraction)}-${index}`} className="order-piece-chip">
-                {formatFraction(fraction)}
-              </span>
-            ))}
+          <span className="order-bubble__label">
+            <FuriganaText text={isPieceCountChallenge ? '最高評価' : '作るピース'} />
+          </span>
+          <div
+            className="order-bubble__pieces"
+            aria-label={
+              isPieceCountChallenge
+                ? `最高評価は${order.perfectPieceCount}ピース`
+                : `作るピースは ${piecePlan.map(formatFraction).join(' と ')}`
+            }
+          >
+            {isPieceCountChallenge ? (
+              <span className="order-piece-chip">{order.perfectPieceCount}ピース</span>
+            ) : (
+              piecePlan.map((fraction, index) => (
+                <span key={`${formatFraction(fraction)}-${index}`} className="order-piece-chip">
+                  {formatFraction(fraction)}
+                </span>
+              ))
+            )}
           </div>
-          <small>
-            {hasSeveralPieces ? 'このピースを合わせて販売します' : 'このピースを1つ販売します'}
-          </small>
         </div>
       </div>
       <div className="fraction-card" aria-label={`目標は ${formatFraction(order.target)}`}>

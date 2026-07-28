@@ -3,7 +3,7 @@ import type { Stage } from '../types/game'
 export const stages: Stage[] = [
   {
     id: 'basic-pieces',
-    title: 'ステージ1 基本の分け方',
+    title: '基本の分け方',
     description: '半分や4分の1など、見た目でわかりやすい注文から練習しよう。',
     goal: 'お客さん3人に販売する',
     targetServes: 3,
@@ -17,7 +17,7 @@ export const stages: Stage[] = [
   },
   {
     id: 'thirds-and-sixths',
-    title: 'ステージ2 3つと6つの分け方',
+    title: '3つと6つの分け方',
     description: '3分の1、6分の1、3分の2を作ってみよう。',
     goal: 'お客さん4人に販売する',
     targetServes: 4,
@@ -33,7 +33,7 @@ export const stages: Stage[] = [
   },
   {
     id: 'mixed-recipes',
-    title: 'ステージ3 組み合わせ注文',
+    title: '組み合わせ注文',
     description: '違う大きさのピースを合わせて、注文の量を作ろう。',
     goal: '5人に販売して、チョコケーキを解放する',
     targetServes: 5,
@@ -49,9 +49,9 @@ export const stages: Stage[] = [
   },
   {
     id: 'cake-master',
-    title: 'ステージ4 ケーキ屋さんマスター',
+    title: 'ケーキ屋さんマスター',
     description: 'ショートケーキとチョコレートケーキの注文に挑戦しよう。',
-    goal: 'トロフィーを全部集めよう',
+    goal: '8人に販売する',
     targetServes: 8,
     requiredUnlockedCakeId: 'chocolate',
     allowedCuts: [2, 3, 4, 6, 12],
@@ -71,6 +71,38 @@ export const stages: Stage[] = [
       'chocolate-half-sixth-two-thirds',
       'chocolate-half-quarter-three-quarters',
       'chocolate-mixed-eleven-twelfths',
+    ],
+  },
+  {
+    id: 'piece-count-challenge',
+    title: 'ピース数チャレンジ',
+    description: '同じ分量でも、ピースの数をそろえて最高評価を目指そう。',
+    goal: 'お客さん6人に販売する',
+    targetServes: 6,
+    requiredUnlockedCakeId: 'chocolate',
+    allowedCuts: [2, 3, 4, 6, 12],
+    orderIds: [
+      'piece-count-half-three',
+      'piece-count-two-thirds-three',
+      'piece-count-three-quarters-three',
+      'chocolate-piece-count-half-three',
+    ],
+  },
+  {
+    id: 'random-piece-count-challenge',
+    title: 'ランダムピース数チャレンジ',
+    description: '注文ごとに違うピース数で、最高評価を目指そう。',
+    goal: 'お客さん6人に販売する',
+    targetServes: 6,
+    requiredUnlockedCakeId: 'chocolate',
+    allowedCuts: [2, 3, 4, 6, 12],
+    orderIds: [
+      'random-piece-count-half',
+      'random-piece-count-third',
+      'random-piece-count-quarter',
+      'chocolate-random-piece-count-half',
+      'chocolate-random-piece-count-third',
+      'chocolate-random-piece-count-quarter',
     ],
   },
 ]
