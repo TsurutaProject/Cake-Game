@@ -1,5 +1,5 @@
 import type { Stage, StageResultSummary } from '../types/game'
-import { cakeImages } from '../data/assets'
+import { toppingImages } from '../data/assets'
 import { FuriganaText } from './FuriganaText'
 
 interface TitleScreenProps {
@@ -33,10 +33,31 @@ export function TitleScreen({ onStart }: TitleScreenProps) {
   return (
     <main className="flow-screen flow-screen--title">
       <section className="flow-panel flow-panel--title" aria-labelledby="game-title">
-        <p className="flow-panel__eyebrow">ケーキを切って、ぴったり販売</p>
+        <p className="flow-panel__eyebrow"><FuriganaText text="ケーキを切って、ぴったり販売" /></p>
         <h1 id="game-title"><FuriganaText text="分ケーキ" /></h1>
-        <p>お客さんの注文どおりに、ケーキを分けよう。</p>
-        <img className="flow-panel__cake" src={cakeImages.shortcake} alt="ショートケーキ" />
+        <p><FuriganaText text="お客さんの注文どおりに、ケーキを分けよう。" /></p>
+        <figure className="flow-panel__title-cake" aria-label="切り分けたショートケーキ">
+          <svg viewBox="0 0 260 240" role="img" aria-hidden="true">
+            <defs>
+              <radialGradient id="title-cake-frosting" cx="42%" cy="36%" r="72%">
+                <stop offset="0%" stopColor="#fffefc" />
+                <stop offset="72%" stopColor="#fff9f6" />
+                <stop offset="100%" stopColor="#f2e4df" />
+              </radialGradient>
+            </defs>
+            <circle className="title-cake__plate" cx="120" cy="120" r="112" />
+            <g className="title-cake__whole">
+              <path className="title-cake__surface" d="M120 120 L201.4 73 A94 94 0 1 1 120 26 Z" />
+              <path className="title-cake__gap" d="M120 120 L120 16 A104 104 0 0 1 210.1 68 Z" />
+            </g>
+            <g className="title-cake__slice" transform="translate(20 -8)">
+              <path className="title-cake__slice-fill" d="M120 120 L120 26 A94 94 0 0 1 201.4 73 Z" />
+            </g>
+            <image className="title-cake__topping" href={toppingImages.strawberry} x="139" y="130" width="42" height="42" />
+            <image className="title-cake__topping" href={toppingImages.banana} x="146" y="58" width="42" height="42" />
+            <image className="title-cake__topping" href={toppingImages.cream} x="59" y="150" width="44" height="44" />
+          </svg>
+        </figure>
         <button type="button" className="button button--primary flow-panel__start" onClick={onStart}>
           <FuriganaText text="はじめる" />
         </button>

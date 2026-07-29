@@ -73,6 +73,7 @@ const defaultCuts = 12
 const tutorialStorageKey = 'fraction-cake-guided-tutorial-seen-v3'
 const completedStagesStorageKey = 'cake-game:completed-stages'
 const maxUnlockedStageStorageKey = 'cake-game:max-unlocked-stage'
+const unlockedCakeIdsStorageKey = 'cake-game:unlocked-cakes'
 
 const shouldShowTutorial = (): boolean => {
   try {
@@ -104,6 +105,27 @@ const readMaxUnlockedStage = (): number => {
       : 0
   } catch {
     return 0
+  }
+}
+
+const readUnlockedCakeIds = (): CakeKind[] => {
+  try {
+    const storedValue = window.localStorage.getItem(unlockedCakeIdsStorageKey)
+    const parsedValue: unknown = storedValue === null ? ['shortcake'] : JSON.parse(storedValue)
+
+    if (!Array.isArray(parsedValue)) {
+      return ['shortcake']
+    }
+
+    return parsedValue.reduce<CakeKind[]>((cakeIds, cakeId) => {
+      if (!cakes.some((cake) => cake.id === cakeId) || cakeIds.includes(cakeId as CakeKind)) {
+        return cakeIds
+      }
+
+      return [...cakeIds, cakeId as CakeKind]
+    }, ['shortcake'])
+  } catch {
+    return ['shortcake']
   }
 }
 
@@ -275,6 +297,12 @@ const getUnlockedTrophyIds = (progress: TrophyProgress): string[] =>
     .filter((trophy) => progress[trophy.metric] >= trophy.target)
     .map((trophy) => trophy.id)
 
+const getStageCakeIds = (stageIndex: number, purchasedCakeIds: CakeKind[]): CakeKind[] =>
+  stageIndex < 2 ? ['shortcake'] : purchasedCakeIds
+
+const getStageCakes = (stageIndex: number): typeof cakes =>
+  stageIndex < 2 ? cakes.filter((cake) => cake.id === 'shortcake') : cakes
+
 function App() {
   const [screen, setScreen] = useState<GameScreen>('title')
   const [guidedTutorialStep, setGuidedTutorialStep] = useState<GuidedTutorialStep | null>(null)
@@ -283,7 +311,7 @@ function App() {
   const [servedCount, setServedCount] = useState(0)
   const [activeOrderId, setActiveOrderId] = useState(initialStageOrders[0].id)
   const [activeCakeId, setActiveCakeId] = useState<CakeKind>('shortcake')
-  const [unlockedCakeIds, setUnlockedCakeIds] = useState<CakeKind[]>(['shortcake'])
+  const [unlockedCakeIds, setUnlockedCakeIds] = useState<CakeKind[]>(readUnlockedCakeIds)
   const [currentCuts, setCurrentCuts] = useState(defaultCuts)
   const [interactionMode, setInteractionMode] = useState<InteractionMode>('cut')
   const [toppingLayoutIndex, setToppingLayoutIndex] = useState(0)
@@ -301,7 +329,7 @@ function App() {
   const [totalEarned, setTotalEarned] = useState(0)
   const [stageEarned, setStageEarned] = useState(0)
   const [stageBestCombo, setStageBestCombo] = useState(0)
-  const [highestUnlockedCakeCount, setHighestUnlockedCakeCount] = useState(1)
+  const [highestUnlockedCakeCount, setHighestUnlockedCakeCount] = useState(() => readUnlockedCakeIds().length)
   const [cleanServes, setCleanServes] = useState(0)
   const [recipeServes, setRecipeServes] = useState(0)
   const [twelfthPieceServes, setTwelfthPieceServes] = useState(0)
@@ -332,6 +360,14 @@ function App() {
     ? undefined
     : orders.find((order) => order.id === 'half')
   const activeOrder = tutorialExampleOrder ?? stageOrders.find((order) => order.id === activeOrderId) ?? stageOrders[0]
+  const stageAvailableCakeIds = useMemo(() => {
+    const stageCakeIds = getStageCakeIds(activeStageIndex, unlockedCakeIds)
+
+    return activeStage.requiredUnlockedCakeId === undefined
+      ? stageCakeIds
+      : addUniqueValue(stageCakeIds, activeStage.requiredUnlockedCakeId)
+  }, [activeStage.requiredUnlockedCakeId, activeStageIndex, unlockedCakeIds])
+  const visibleCakes = useMemo(() => getStageCakes(activeStageIndex), [activeStageIndex])
   const visibleQueueOrders = useMemo(
     () => tutorialExampleOrder === undefined ? getVisibleQueueOrders(stageOrders, activeOrder) : [tutorialExampleOrder],
     [activeOrder, stageOrders, tutorialExampleOrder],
@@ -368,6 +404,36 @@ function App() {
       // Progress remains available for this session when browser storage is unavailable.
     }
   }, [maxUnlockedStage])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(unlockedCakeIdsStorageKey, JSON.stringify(unlockedCakeIds))
+    } catch {
+      // Cake unlocks remain available for this session when browser storage is unavailable.
+    }
+  }, [unlockedCakeIds])
+
+  useEffect(() => {
+    const updateViewportBottom = (): void => {
+      const visualViewport = window.visualViewport
+      const viewportBottom = visualViewport == null
+        ? window.innerHeight
+        : visualViewport.offsetTop + visualViewport.height
+
+      document.documentElement.style.setProperty('--app-viewport-bottom', `${viewportBottom}px`)
+    }
+
+    updateViewportBottom()
+    window.addEventListener('resize', updateViewportBottom)
+    window.visualViewport?.addEventListener('resize', updateViewportBottom)
+    window.visualViewport?.addEventListener('scroll', updateViewportBottom)
+
+    return () => {
+      window.removeEventListener('resize', updateViewportBottom)
+      window.visualViewport?.removeEventListener('resize', updateViewportBottom)
+      window.visualViewport?.removeEventListener('scroll', updateViewportBottom)
+    }
+  }, [])
 
   const showTrophyToasts = (unlockedTrophies: TrophyDefinition[]): void => {
     if (unlockedTrophies.length === 0) {
@@ -483,9 +549,9 @@ function App() {
 
   const startStage = (stageIndex: number): void => {
     const stage = stages[stageIndex] ?? stages[0]
-    const stageUnlockedCakeIds: CakeKind[] = stage.requiredUnlockedCakeId === undefined
-      ? ['shortcake']
-      : addUniqueValue(['shortcake'], stage.requiredUnlockedCakeId)
+    const stageUnlockedCakeIds = stage.requiredUnlockedCakeId === undefined
+      ? getStageCakeIds(stageIndex, unlockedCakeIds)
+      : addUniqueValue(getStageCakeIds(stageIndex, unlockedCakeIds), stage.requiredUnlockedCakeId)
     const showTutorial = stageIndex === 0 && shouldShowTutorial()
     const firstOrderId = showTutorial
       ? 'half'
@@ -496,7 +562,14 @@ function App() {
     setStageServedCount(0)
     setActiveOrderId(firstOrderId)
     setActiveCakeId('shortcake')
-    setUnlockedCakeIds(stageUnlockedCakeIds)
+    if (
+      stage.requiredUnlockedCakeId !== undefined &&
+      !unlockedCakeIds.includes(stage.requiredUnlockedCakeId)
+    ) {
+      setUnlockedCakeIds((currentCakeIds) =>
+        addUniqueValue(currentCakeIds, stage.requiredUnlockedCakeId as CakeKind),
+      )
+    }
     setCurrentCuts(showTutorial ? 2 : defaultCuts)
     setInteractionMode('cut')
     setToppingLayoutIndex(0)
@@ -677,6 +750,10 @@ function App() {
       return
     }
 
+    if (!visibleCakes.some((cake) => cake.id === cakeId)) {
+      return
+    }
+
     setActiveCakeId(cakeId)
     resetCakeBoard(cakeId)
   }
@@ -688,7 +765,11 @@ function App() {
 
     const cake = getCakeById(cakeId)
 
-    if (unlockedCakeIds.includes(cakeId) || money < cake.price) {
+    if (
+      !visibleCakes.some((visibleCake) => visibleCake.id === cakeId) ||
+      unlockedCakeIds.includes(cakeId) ||
+      money < cake.price
+    ) {
       return
     }
 
@@ -841,7 +922,7 @@ function App() {
       if (guidedTutorialStep === 'serve') {
         const nextOrderId = selectNextOrderId(
           stageOrders,
-          unlockedCakeIds,
+          stageAvailableCakeIds,
           servedCount,
           combo,
           activeOrder.id,
@@ -877,7 +958,7 @@ function App() {
       const isNextStageLocked =
         hasMetStageGoal &&
         nextStageCandidate?.requiredUnlockedCakeId !== undefined &&
-        !unlockedCakeIds.includes(nextStageCandidate.requiredUnlockedCakeId)
+        !stageAvailableCakeIds.includes(nextStageCandidate.requiredUnlockedCakeId)
       const nextCleanServes = cleanServes + (cutToppingLabels.length === 0 ? 1 : 0)
       const nextRecipeServes = recipeServes + (recipeMatched ? 1 : 0)
       const combinationKey = getPieceCombinationKey(selectedPieces)
@@ -910,7 +991,7 @@ function App() {
       )
       const nextOrderId = selectNextOrderId(
         stageOrders,
-        unlockedCakeIds,
+        stageAvailableCakeIds,
         nextServedCount,
         nextCombo,
         activeOrder.id,
@@ -1133,9 +1214,9 @@ function App() {
         <section className="play-area">
           <OrderBubble order={activeOrder} cake={getCakeById(activeOrder.cakeKind)} />
           <CakeSelector
-            cakes={cakes}
+            cakes={visibleCakes}
             activeCakeId={activeCake.id}
-            unlockedCakeIds={unlockedCakeIds}
+            unlockedCakeIds={stageAvailableCakeIds}
             money={money}
             onSelectCake={handleSelectCake}
             onBuyCake={handleBuyCake}
