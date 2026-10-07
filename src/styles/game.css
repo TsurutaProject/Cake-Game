@@ -442,6 +442,40 @@
   font-weight: 900;
 }
 
+.sound-toggle {
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top));
+  right: max(16px, env(safe-area-inset-right));
+  z-index: 130;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  min-width: 106px;
+  padding: 10px 14px;
+  border: 2px solid rgba(126, 211, 191, 0.76);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 10px 22px rgba(75, 55, 45, 0.14);
+  color: #277265;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.sound-toggle:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px rgba(75, 55, 45, 0.18);
+}
+
+.sound-toggle.is-on {
+  border-color: #f27059;
+  background: linear-gradient(135deg, #ffed9c 0%, #ff6a58 100%);
+  box-shadow: 0 0 0 4px rgba(255, 208, 90, 0.32), 0 14px 28px rgba(242, 112, 89, 0.28);
+  color: #ffffff;
+}
+
 .score-card--combo {
   overflow: hidden;
   transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;

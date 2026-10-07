@@ -26,7 +26,7 @@ import {
 import { orders } from './data/orders'
 import { stages } from './data/stages'
 import { trophies } from './data/trophies'
-import { toolImages } from './data/assets'
+import { audioAssets, toolImages } from './data/assets'
 import type {
   CakeKind,
   CakePieceModel,
@@ -344,8 +344,10 @@ function App() {
   const [completedStageIds, setCompletedStageIds] = useState<string[]>(readCompletedStageIds)
   const [maxUnlockedStage, setMaxUnlockedStage] = useState(readMaxUnlockedStage)
   const [stageResultSummary, setStageResultSummary] = useState<StageResultSummary | null>(null)
+  const [isSoundEnabled, setIsSoundEnabled] = useState(false)
   const stageCompletionRef = useRef(false)
   const tutorialSnapshotRef = useRef<TutorialSnapshot | null>(null)
+  const bgmAudioRef = useRef<HTMLAudioElement | null>(null)
   const [hasExplainedCombo, setHasExplainedCombo] = useState(false)
   const [hasExplainedTrophies, setHasExplainedTrophies] = useState(false)
 
@@ -412,6 +414,29 @@ function App() {
       // Cake unlocks remain available for this session when browser storage is unavailable.
     }
   }, [unlockedCakeIds])
+
+  useEffect(() => {
+    const audio = bgmAudioRef.current
+
+    if (audio === null) {
+      return
+    }
+
+    audio.volume = 0.32
+
+    if (!isSoundEnabled) {
+      audio.pause()
+      return
+    }
+
+    const playPromise = audio.play()
+
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        setIsSoundEnabled(false)
+      })
+    }
+  }, [isSoundEnabled])
 
   useEffect(() => {
     const updateViewportBottom = (): void => {
@@ -1145,29 +1170,59 @@ function App() {
     startStage(stageIndex)
   }
 
+  const toggleSound = (): void => {
+    setIsSoundEnabled((currentValue) => !currentValue)
+  }
+
+  const soundControl = (
+    <>
+      <audio ref={bgmAudioRef} src={audioAssets.cakeBgm} loop preload="auto" />
+      <button
+        type="button"
+        className={`sound-toggle${isSoundEnabled ? ' is-on' : ''}`}
+        onClick={toggleSound}
+        aria-pressed={isSoundEnabled}
+      >
+        <span aria-hidden="true">♪</span>
+        {isSoundEnabled ? '音 ON' : '音 OFF'}
+      </button>
+    </>
+  )
+
   if (screen === 'title') {
-    return <TitleScreen onStart={() => setScreen('stageSelect')} />
+    return (
+      <>
+        {soundControl}
+        <TitleScreen onStart={() => setScreen('stageSelect')} />
+      </>
+    )
   }
 
   if (screen === 'stageSelect') {
     return (
-      <StageSelectScreen
-        stages={stages}
-        maxUnlockedStage={maxUnlockedStage}
-        completedStageIds={completedStageIds}
-        onSelectStage={handleSelectStage}
-        onBackToTitle={() => setScreen('title')}
-      />
+      <>
+        {soundControl}
+        <StageSelectScreen
+          stages={stages}
+          maxUnlockedStage={maxUnlockedStage}
+          completedStageIds={completedStageIds}
+          onSelectStage={handleSelectStage}
+          onBackToTitle={() => setScreen('title')}
+        />
+      </>
     )
   }
 
   if (screen === 'chapterResult') {
     return (
-      <ChapterResultModal
-        stages={stages}
-        onSelectStage={showStageSelect}
-        onRestart={() => startStage(0)}
-      />
+      <>
+        {soundControl}
+        <ChapterResultModal
+          stages={stages}
+          onSelectStage={showStageSelect}
+          onRestart={() => startStage(0)}
+        />
+      </>
     )
   }
 
@@ -1179,7 +1234,9 @@ function App() {
   ].filter(Boolean).join(' ')
 
   return (
-    <main className={mainClassName}>
+    <>
+      {soundControl}
+      <main className={mainClassName}>
       <header className="game-header">
         <div>
           <div className="game-title-row">
@@ -1354,7 +1411,8 @@ function App() {
           }}
         />
       ) : null}
-    </main>
+      </main>
+    </>
   )
 }
 
